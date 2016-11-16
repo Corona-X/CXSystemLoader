@@ -1,0 +1,73 @@
+{
+    "targets": {
+        "CXSystemLoader.efi": {
+            "type": "executable_efi",
+            "install_dir": "<(gCXInstallRootEFI)>/CXSystemLoader.efi",
+            "dependencies": [
+                "CXSystemLoaderHeaders",
+                "CXK-SharedHeaders",
+                "CXK-SharedLibrary"
+            ],
+            "source_dirs": {
+                "source": [
+                    "CXSystemLoader.s",
+                    "SLBitmapFont.c",
+                    "SLConfigFile.c",
+                    "SLFileConsole.c",
+                    "SLFormattedPrint.c",
+                    "SLLibrary.c",
+                    "SLLoader.c",
+                    "SLMemoryAllocator.c",
+                    "SLMemoryConsole.c",
+                    "SLSerial.s",
+                    "SLSerialConsole.c",
+                    "SLSetupCPU.s",
+                    "SLTest.c",
+                    "SLVideoConsole",
+                    "SLFPO.c"
+                ],
+                "source/EFI": [
+                    "SLBootServices.c",
+                    "SLFile.c",
+                    "SLGraphics.c",
+                    "SLLoadedImage.c",
+                    "SLSystemTable.c"
+                ]
+            }
+        },
+        "CXSystemLoaderHeaders": {
+            "type": "headers",
+            "source_dirs": {
+                "headers/SystemLoader/EFI": {
+                    "framework": "SystemLoader",
+                    "framework_type": "private",
+                    "install_dir": "EFI",
+                    "public": [
+                        "SLBootServices.h",
+                        "SLFile.h",
+                        "SLGraphics.h",
+                        "SLLoadedImage.h",
+                        "SLRuntimeServices.h",
+                        "SLSystemTable.h"
+                    ]
+                },
+                "headers/SystemLoader": {
+                    "framework": "SystemLoader",
+                    "framework_type": "private",
+                    "install_dir": ".",
+                    "public": [
+                        "SLBase.h",
+                        "SLBitmapFont.h",
+                        "SLConfigFile.h",
+                        "SLFormattedPrint.h",
+                        "SLLibrary.h",
+                        "SLLoader.h",
+                        "SLMemoryAllocator.h",
+                        "SLSerial.h",
+                        "SystemLoder.h"
+                    ]
+                }
+            }
+        }
+    }
+}
