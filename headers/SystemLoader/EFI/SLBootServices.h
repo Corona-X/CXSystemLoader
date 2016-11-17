@@ -54,12 +54,6 @@ typedef struct {
 } SLSimpleTextInput;
 
 typedef struct {
-    OSAddress unused1;
-    SLABI SLStatus (*printUTF16)(OSAddress this, OSUTF16Char *string);
-    OSAddress unused2[8];
-} SLSimpleTextOutput;
-
-typedef struct {
     UInt32 entryType;
     UInt32 padding0;
     OSAddress physicalAddress;
@@ -104,11 +98,6 @@ typedef struct {
     OSPrivate CXKMemoryMap *SLBootServicesGetMemoryMap(void);
     OSPrivate CXKMemoryMap *SLBootServicesTerminate(void);
     OSPrivate bool SLBootServicesHaveTerminated(void);
-
-    OSPrivate bool SLDelayProcessor(UIntN time, bool useBootServices);
-    OSPrivate char SLWaitForKeyPress(void);
-
-    OSPrivate bool SLBootServicesOutputString(OSUTF16Char *string);
 #endif /* kCXBootloaderCode */
 
 #endif /* !defined(__SYSTEMLOADER_SLBOOTSERVICES__) */

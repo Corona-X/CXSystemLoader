@@ -366,8 +366,33 @@ UInt8 *SLScanString(UInt8 terminator, OSSize *size)
     }
 }
 
+void SLSetVideoColor(UInt32 color, bool background)
+{
+    SLConsole *firstConsole, *console;
+    firstConsole = console = gSLFirstConsole;
+
+    while (console)
+    {
+        if (SLConsoleIsVideoConsole(console) && console->output)
+        {
+            SLConsole *next = console->next;
+            console->next = kOSNullPointer;
+            gSLFirstConsole = console;
+
+            SLPrintString("\e%c%0lX\e", (background ? 'b' : 'f'), color);
+            console->next = next;
+        }
+
+        console = console->next;
+    }
+
+    gSLFirstConsole = firstConsole;
+}
+
 OSInline void SLPrintChars(OSUTF8Char *source, OSCount count)
 {
+    if (!count) return;
+
     SLConsole *console = gSLFirstConsole;
 
     while (console)

@@ -27,9 +27,7 @@ typedef struct {
     UInt32 padding;
     OSAddress unused1;
     SLSimpleTextInput *stdin;
-    OSAddress unused2;
-    SLSimpleTextOutput *stdout;
-    OSAddress unused3[2];
+    OSAddress unused2[4];
     SLRuntimeServices *runtimeServices;
     SLBootServices *bootServices;
     UIntN numberOfConfigTables;

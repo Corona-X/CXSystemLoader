@@ -4,7 +4,9 @@
 SLStatus CXSystemLoaderMain(OSAddress imageHandle, SLSystemTable *systemTable)
 {
     #if kCXBuildDev
+        SLSetVideoColor(0x8202FF, false);
         SLPrintString(kSLLoaderWelcomeString);
+        SLSetVideoColor(0x00FFFFFF, false);
 
         SLPS("Consoles:\n");
 

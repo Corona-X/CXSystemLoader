@@ -60,7 +60,7 @@ CXKMemoryMap *SLBootServicesGetMemoryMap(void)
         
         return kOSNullPointer;
     }
-    
+
 again:
     map->entryCount = (neededSize / sizeof(CXKMemoryMapEntry));
     OSBuffer entryBuffer = SLAllocate(neededSize);
@@ -75,10 +75,10 @@ again:
         
         goto again;
     }
-    
+
     if (entrySize != sizeof(CXKMemoryMapEntry)) status = kSLStatusWrongSize;
     if (version != 1) status = kSLStatusIncompatibleVersion;
-    
+
     if (SLStatusIsError(status))
     {
         SLFree(map->entries);
@@ -86,7 +86,7 @@ again:
         
         return kOSNullPointer;
     }
-    
+
     return map;
 }
 
@@ -106,35 +106,4 @@ CXKMemoryMap *SLBootServicesTerminate(void)
         
         return finalMemoryMap;
     }
-}
-
-bool SLDelayProcessor(UIntN time, bool useBootServices)
-{
-    if (useBootServices && gSLBootServicesEnabled) {
-        SLStatus status = SLBootServicesGetCurrent()->stall(time);
-        return !SLStatusIsError(status);
-    } else {
-        // Try to mimic BS stall() function
-        for (volatile UInt64 i = 0; i < (time * 100); i++);
-        return true;
-    }
-}
-
-char SLWaitForKeyPress(void)
-{
-    SLStatus status = gSLLoaderSystemTable->stdin->reset(gSLLoaderSystemTable->stdin, false);
-    if (SLStatusIsError(status)) return 0;
-    status = kSLStatusNotReady;
-    SLKeyPress key;
-    
-    while (status == kSLStatusNotReady)
-        status = gSLLoaderSystemTable->stdin->readKey(gSLLoaderSystemTable->stdin, &key);
-    
-    return key.keycode;
-}
-
-bool SLBootServicesOutputString(OSUTF16Char *string)
-{
-    SLStatus status = gSLLoaderSystemTable->stdout->printUTF16(gSLLoaderSystemTable->stdout, string);
-    return !SLStatusIsError(status);
 }

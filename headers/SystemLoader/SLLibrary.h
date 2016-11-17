@@ -16,6 +16,8 @@
     SLPrivate OSNoReturn void SLLeave(SLStatus status);
     OSPrivate OSAddress SLGetMainImageHandle(void);
     OSPrivate OSNoReturn void SLUnrecoverableError(void);
+    OSPrivate bool SLDelayProcessor(UIntN time, bool useBootServices);
+    OSPrivate char SLWaitForKeyPress(void);
 
     #if kCXTargetOSApple
         #define SLPrintError SLPrintString

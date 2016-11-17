@@ -47,11 +47,14 @@ typedef struct __SLConsole {
     OSPrivate OSUTF8Char *SLPrintToStringFromList(const char *format, OSVAList args);
     OSPrivate void SLPrintStringFromList(const char *f, OSVAList args);
 
+    OSPrivate void SLSetVideoColor(UInt32 color, bool background);
+
     OSPrivate OSUTF8Char *SLUTF16ToUTF8(OSUTF16Char *utf16);
     OSPrivate OSUTF16Char *SLUTF8ToUTF16(OSUTF8Char *utf8);
     OSPrivate OSSize SLUTF16SizeInUTF8(OSUTF16Char *utf16);
     OSPrivate OSSize SLUTF8SizeInUTF16(OSUTF8Char *utf8);
 
+    OSPrivate bool SLConsoleIsVideoConsole(SLConsole *console);
     OSPrivate SInt8 SLRegisterConsole(SLConsole *console);
     OSExport SLConsole *gSLFirstConsole;
 #endif /* kCXBuildDev */

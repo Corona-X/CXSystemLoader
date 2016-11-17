@@ -5,8 +5,8 @@
             "install_dir": "<(gCXInstallRootEFI)>/CXSystemLoader.efi",
             "dependencies": [
                 "CXSystemLoaderHeaders",
-                "CXK-SharedHeaders",
-                "CXK-SharedLibrary"
+                "CXKSharedHeaders",
+                "CXKSharedLibrary"
             ],
             "source_dirs": {
                 "source": [

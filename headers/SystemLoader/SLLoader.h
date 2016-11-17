@@ -16,7 +16,7 @@
 #include <SystemLoader/SLConfigFile.h>
 
 #define kSLLoaderVersionString   "A.1"
-#define kSLLoaderBuildString     "0033"
+#define kSLLoaderBuildString     "0034"
 
 #define kSLLoaderWelcomeString   "Corona-X System Loader Version " kSLLoaderVersionString " [Build " kSLLoaderBuildString "]\r\n"
 #define kSLLoaderDataDirectory   "EFI/corona"

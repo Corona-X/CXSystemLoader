@@ -11,6 +11,8 @@ typedef struct {
     UInt32 baseOffsetY;
     UInt32 color;
     UInt32 backgroundColor;
+    bool isBackground;
+    bool inEscapeCode;
 } SLVideoConsole;
 
 void SLVideoConsoleSanitizeCursor(SLVideoConsole *console)
@@ -39,6 +41,58 @@ void SLVideoConsoleSanitizeCursor(SLVideoConsole *console)
 
 void SLVideoConsoleOutputCharacter(UInt8 character, SLVideoConsole *console)
 {
+    if (console->inEscapeCode)
+    {
+        if (character == '\e')
+        {
+            console->inEscapeCode = false;
+            return;
+        }
+
+        if (character == 'f')
+        {
+            console->isBackground = false;
+            console->color = 0;
+            return;
+        }
+
+        if (character == 'b')
+        {
+            console->isBackground = true;
+            console->backgroundColor = 0;
+            return;
+        }
+
+        char offset = 0;
+
+        if (OSIsBetween('0', character, '9'))
+            offset = '0';
+
+        if (OSIsBetween('A', character, 'F'))
+            offset = 'A' - 10;
+
+        if (!offset) {
+            if (!console->isBackground) {
+                console->color = SLConfigGet()->dev.videoConsole.foregroundColor;
+            } else {
+                console->backgroundColor = SLConfigGet()->dev.videoConsole.backgroundColor;
+            }
+
+            console->inEscapeCode = false;
+            SLPrintString("Error: Invalid escape sequence! (Extraneous '%c' [0x%02X])\n", character, character);
+        } else {
+            if (!console->isBackground) {
+                console->color *= 0x10;
+                console->color += (character - offset);
+            } else {
+                console->backgroundColor *= 0x10;
+                console->backgroundColor += (character - offset);
+            }
+        }
+
+        return;
+    }
+
     SLGraphicsPoint outputLocation;
     outputLocation.y = (console->cursor.y * console->selectedFont->height) + console->baseOffsetY;
     outputLocation.x = (console->cursor.x * console->selectedFont->width ) + console->baseOffsetX;
@@ -66,8 +120,16 @@ void SLVideoConsoleOutputCharacter(UInt8 character, SLVideoConsole *console)
                 console->cursor.x--;
             }
         } break;
+        case '\t': {
+            for (UInt8 i = 0; i < 4; i++)
+                SLVideoConsoleOutputCharacter(' ', console);
+        } return;
+        case '\e': {
+            console->inEscapeCode = true;
+        } return;
         default: {
-            SLGraphicsContextWritePrerenderedCharacter(console->context, character, outputLocation, console->selectedFont);
+            SLGraphicsContextWriteCharacter(console->context, character, outputLocation, console->selectedFont, console->color, console->backgroundColor);
+            //SLGraphicsContextWritePrerenderedCharacter(console->context, character, outputLocation, console->selectedFont, console->color, console->backgroundColor);
             console->cursor.x++;
         } break;
     }
@@ -75,7 +137,7 @@ void SLVideoConsoleOutputCharacter(UInt8 character, SLVideoConsole *console)
     SLVideoConsoleSanitizeCursor(console);
 }
 
-void SLVideoConsoleOutput(UInt8 *string, OSSize size, SLVideoConsole *console)
+void SLVideoConsoleOutput(OSUTF8Char *string, OSSize size, SLVideoConsole *console)
 {
     for (UInt8 i = 0; i < size; i++)
         SLVideoConsoleOutputCharacter(string[i], console);
@@ -104,6 +166,11 @@ void SLVideoConsoleDeleteCharacters(OSCount count, SLVideoConsole *console)
     CXKMemorySetValue(spaces, count, '\b');
     SLVideoConsoleOutput(spaces, count, console);
     SLFree(spaces);
+}
+
+bool SLConsoleIsVideoConsole(SLConsole *console)
+{
+    return (console->output == (SLConsoleOutput)SLVideoConsoleOutput);
 }
 
 void __SLVideoConsoleInitAll(void)
@@ -137,6 +204,7 @@ void __SLVideoConsoleInitAll(void)
         console->selectedFont = &gSLBitmapFont8x16;
         console->context = context;
         console->cursor = ((SLGraphicsPoint){0, 0});
+        console->inEscapeCode = false;
 
         if (context->isBGRX) {
             UInt32 backgroundColor = config->dev.videoConsole.backgroundColor;

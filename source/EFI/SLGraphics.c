@@ -135,15 +135,16 @@ void SLGraphicsContextWriteCharacter(SLGraphicsContext *context, UInt8 character
     }
 }
 
-void SLGraphicsContextWritePrerenderedCharacter(SLGraphicsContext *context, UInt8 character, SLGraphicsPoint location, SLBitmapFont *font)
+void SLGraphicsContextWritePrerenderedCharacter(SLGraphicsContext *context, UInt8 character, SLGraphicsPoint location, SLBitmapFont *font, UInt32 color, UInt32 backgroundColor)
 {
     UInt32 *rowPointer = context->framebuffer + ((location.y * context->width) + location.x);
-    UInt32 *characterData = font->fontData + ((font->height * font->width) * character);
+    UInt8 *characterData = font->fontData + ((font->height * font->width) * character);
     OSCount y = font->height - 1;
-    
+
     do {
-        CXKMemoryCopy(characterData, rowPointer, font->width * sizeof(UInt32));
-        
+        for (UInt8 i = 0; i < font->width; i++)
+            rowPointer[i] = (characterData[i] ? color : backgroundColor);
+
         characterData += font->width;
         rowPointer += context->width;
     } while (y--);
