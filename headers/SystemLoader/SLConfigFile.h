@@ -3,8 +3,6 @@
 /**=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=**/
 /* beeselmane - 14.10.2016 - 6:00 PM EST                           */
 /**=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=**/
-/* beeselmane - 14.10.2016 - 6:00 PM EST                           */
-/**=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=**/
 
 #ifndef __SYSTEMLOADER_SLCONFIGFILE__
 #define __SYSTEMLOADER_SLCONFIGFILE__ 1
@@ -12,7 +10,7 @@
 #include <Corona-X.h>
 #include <SystemLoader/SLBase.h>
 
-typedef CXEnum(UInt8, SLFileConsoleMode) {
+typedef OSEnum(UInt8, SLFileConsoleMode) {
     kSLFileConsoleModeCreateNew,
     kSLFileConsoleModeAppend,
 };

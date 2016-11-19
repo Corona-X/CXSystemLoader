@@ -200,7 +200,16 @@ OSBuffer SLAllocate(OSSize size)
 
     OSSize allocSize = size + sizeof(OSSize);
     allocSize = OSAlignUpward(allocSize, kSLMemoryAllocatorAllocAlignment);
-    allocSize = OSRoundToPowerOf2(allocSize);
+
+    // Allocate next power of 2 or,
+    // if the block is larger than the current page size,
+    // allocate the next multiple of the page size
+    if (allocSize < kSLBootPageSize) {
+        allocSize = OSRoundToPowerOf2(allocSize);
+    } else {
+        allocSize = OSAlignUpward(allocSize, kSLBootPageSize);
+    }
+
     OSAddress result;
 
     while (!(result = SLAllocateInPool(&poolInfo, allocSize)))

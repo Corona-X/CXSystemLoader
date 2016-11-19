@@ -4,6 +4,11 @@
 
 #define kSLScanBufferSize 1024
 
+#define kSLSizeError  0xFFFFFFFFFFFFFFFF
+#define kSLUTF32Error 0xFFFFFFFF
+#define kSLUTF16Error 0xFFFF
+#define kSLUTF8Error  0x00
+
 static const OSUnicodePoint kSLSurrogateHighBegin  = 0xD800;
 static const OSUnicodePoint kSLSurrogateHighFinish = 0xDBFF;
 static const OSUnicodePoint kSLSurrogateLowBegin   = 0xDC00;
@@ -106,7 +111,7 @@ OSPrivate OSUnicodePoint SLUTF8ToCodePoint(OSUTF8Char *input, OSCount inCount, O
     {
         (*usedCount) = inCount;
 
-        return kOSUTF32Error;
+        return kSLUTF32Error;
     }
 
     switch (count)
@@ -158,7 +163,7 @@ OSPrivate OSUnicodePoint SLUTF16ToCodePoint(OSUTF16Char *input, OSCount inCount,
     (*usedCount) = 0;
 
     if (OSIsBetween(kSLSurrogateHighBegin, first, kSLSurrogateHighFinish)) {
-        if (!inCount) return kOSUTF32Error;
+        if (!inCount) return kSLUTF32Error;
 
         OSUTF16Char second = (*input);
         (*usedCount) = 1;
@@ -166,10 +171,10 @@ OSPrivate OSUnicodePoint SLUTF16ToCodePoint(OSUTF16Char *input, OSCount inCount,
         if (OSIsBetween(kSLSurrogateLowBegin, second, kSLSurrogateLowFinish)) {
             return ((OSUnicodePoint)((first << 10) | second) + 0x10000);
         } else {
-            return kOSUTF32Error;
+            return kSLUTF32Error;
         }
     } else if (OSIsBetween(kSLSurrogateLowBegin, first, kSLSurrogateLowFinish)) {
-        return kOSUTF32Error;
+        return kSLUTF32Error;
     } else {
         return ((OSUnicodePoint)first);
     }
@@ -185,16 +190,16 @@ OSSize SLUTF16SizeInUTF8(OSUTF16Char *utf16)
         OSUTF16Char character = utf16[i];
 
         if (OSIsBetween(kSLSurrogateHighBegin, character, kSLSurrogateHighFinish)) {
-            if (!((i++) < stringLength)) return kOSSizeError;
+            if (!((i++) < stringLength)) return kSLSizeError;
             character = utf16[i];
 
             if (OSIsBetween(kSLSurrogateLowBegin, character, kSLSurrogateLowFinish)) {
                 size += 2;
             } else {
-                return kOSSizeError;
+                return kSLSizeError;
             }
         } else if (OSIsBetween(kSLSurrogateLowBegin, character, kSLSurrogateLowFinish)) {
-            return kOSSizeError;
+            return kSLSizeError;
         } else {
             size++;
         }
@@ -214,7 +219,7 @@ OSSize SLUTF8SizeInUTF16(OSUTF8Char *utf8)
         i += (extraBytes - 1);
 
         if (extraBytes && (i >= stringLength))
-            return kOSSizeError;
+            return kSLSizeError;
 
         if (extraBytes >= 2) {
             size += 2;
@@ -229,7 +234,7 @@ OSSize SLUTF8SizeInUTF16(OSUTF8Char *utf8)
 OSUTF8Char *SLUTF16ToUTF8(OSUTF16Char *utf16)
 {
     OSSize utf8size = SLUTF16SizeInUTF8(utf16);
-    if (utf8size == kOSSizeError) return kOSNullPointer;
+    if (utf8size == kSLSizeError) return kOSNullPointer;
 
     OSUTF8Char *result = SLAllocate((utf8size + 1) * sizeof(OSUTF8Char)).address;
     OSUTF8Char *utf8 = result;
@@ -254,7 +259,7 @@ OSUTF8Char *SLUTF16ToUTF8(OSUTF16Char *utf16)
 OSUTF16Char *SLUTF8ToUTF16(OSUTF8Char *utf8)
 {
     OSSize utf16size = SLUTF8SizeInUTF16(utf8);
-    if (utf16size == kOSSizeError) return kOSNullPointer;
+    if (utf16size == kSLSizeError) return kOSNullPointer;
 
     OSUTF16Char *result = SLAllocate((utf16size + 1) * sizeof(OSUTF16Char)).address;
     OSUTF16Char *utf16 = result;
@@ -347,7 +352,7 @@ UInt8 *SLScanString(UInt8 terminator, OSSize *size)
             {
                 UInt8 read = console->input(false, console->context);
 
-                if (read != kOSUTF8Error)
+                if (read != kSLUTF8Error)
                 {
                     if (read == terminator) {
                         string[i++] = 0;

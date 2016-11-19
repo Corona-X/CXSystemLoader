@@ -3,8 +3,6 @@
 /**=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=**/
 /* beeselmane - 9.10.2016  - 11:00 AM EST                          */
 /**=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=**/
-/* beeselmane - 9.10.2016  - 11:00 AM EST                          */
-/**=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=**/
 
 #ifndef __SYSTEMLOADER_SLBASE__
 #define __SYSTEMLOADER_SLBASE__ 1
@@ -13,7 +11,7 @@
 #include <System/OSTypes.h>
 #include <System/OSUID.h>
 #include <System/OSCompilerMacros.h>
-#include <System/OSGPT.h>
+#include <System/Filesystems/OSGPT.h>
 #include <System/OSByteMacros.h>
 #include <Kernel/CXKBootOptions.h>
 #include <Kernel/CXKPOST.h>

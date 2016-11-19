@@ -145,7 +145,7 @@ void SLVideoConsoleOutput(OSUTF8Char *string, OSSize size, SLVideoConsole *conso
 
 UInt8 SLVideoConsoleInput(bool wait, SLVideoConsole *console)
 {
-    return kOSUTF8Error;
+    return 0;
 }
 
 void SLVideoConsoleMoveBackward(OSCount spaces, SLVideoConsole *console)
