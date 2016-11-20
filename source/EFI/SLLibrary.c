@@ -28,6 +28,8 @@ bool SLDelayProcessor(UIntN time, bool useBootServices)
 
 char SLWaitForKeyPress(void)
 {
+    SLBootServicesCheck(0);
+
     SLStatus status = gSLLoaderSystemTable->stdin->reset(gSLLoaderSystemTable->stdin, false);
     if (SLStatusIsError(status)) return 0;
     status = kSLStatusNotReady;

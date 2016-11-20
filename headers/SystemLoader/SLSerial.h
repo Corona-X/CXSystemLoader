@@ -28,19 +28,21 @@
     #define kSLSerialMarkParity         0x5
     #define kSLSerialSpaceParity        0x7
 
-    #if kCXBootloaderCode
-        SLPrivate SLSerialPort SLSerialPortInit(OSAddress portBase);
-        SLPrivate void SLSerialPortReset(SLSerialPort port);
-        SLPrivate void SLSerialPortSetupLineControl(SLSerialPort port, UInt8 size, UInt8 parity, UInt8 stop);
-        SLPrivate void SLSerialPortSetBaudDivisor(SLSerialPort port, UInt16 divisor);
-        SLPrivate void SLSerialPortSetBaudRate(SLSerialPort port, UInt32 rate);
+    #if kCXBootloaderCode && !kCXAssemblyCode
+        typedef UInt16 SLSerialPort;
 
-        SLPrivate void SLSerialWriteCharacter(SLSerialPort port, UInt8 character, bool block);
-        SLPrivate UInt8 SLSerialReadCharacter(SLSerialPort port, bool block);
+        OSPrivate SLABI SLSerialPort SLSerialPortInit(OSAddress portBase);
+        OSPrivate SLABI void SLSerialPortReset(SLSerialPort port);
+        OSPrivate SLABI void SLSerialPortSetupLineControl(SLSerialPort port, UInt8 size, UInt8 parity, UInt8 stop);
+        OSPrivate SLABI void SLSerialPortSetBaudDivisor(SLSerialPort port, UInt16 divisor);
+        OSPrivate SLABI void SLSerialPortSetBaudRate(SLSerialPort port, UInt32 rate);
 
-        SLPrivate void SLSerialWriteString(SLSerialPort port, UInt8 *string);
-        SLPrivate void SLSerialReadString(SLSerialPort port, UInt8 terminator, OSBuffer *buffer, bool print);
-    #endif /* kCXBootloaderCode */
+        OSPrivate SLABI void SLSerialWriteCharacter(SLSerialPort port, UInt8 character, bool block);
+        OSPrivate SLABI UInt8 SLSerialReadCharacter(SLSerialPort port, bool block);
+
+        OSPrivate SLABI void SLSerialWriteString(SLSerialPort port, UInt8 *string);
+        OSPrivate SLABI void SLSerialReadString(SLSerialPort port, UInt8 terminator, OSBuffer *buffer, bool print);
+    #endif /* kCXBootloaderCode && !kCXAssemblyCode */
 #endif /* kCXBuildDev */
 
 #endif /* !defined(__SYSTEMLOADER_SLSERIAL__) */

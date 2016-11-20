@@ -1,9 +1,9 @@
-#include <Kernel/CXKAssembly.h>
+#include <Kernel/XKAssembly.h>
 
 #if kCXArchIA
 
-.section kCXKCodeSectionName
-.align kCXKNaturalAlignment
+.section kXKCodeSectionName
+.align kXKNaturalAlignment
 .code64
 
 // Arguments:
@@ -17,7 +17,7 @@
 //
 // If Debug:
 //
-CXKDeclareFunction(SLSetupCPU):
+XKDeclareFunction(SLSetupCPU):
     //cli
     //movq $0xC0000080, %rcx
     //rdmsr

@@ -1,12 +1,12 @@
-#include <Kernel/CXKAssembly.h>
+#include <Kernel/XKAssembly.h>
 
 #define testValue1 0xC7
 #define testValue2 0x83
 
 #if kCXArchIA && kCXBuildDev
 
-.section kCXKCodeSectionName
-.align kCXKNaturalAlignment
+.section kXKCodeSectionName
+.align kXKNaturalAlignment
 
 // Arguments:
 //   %cx: port
@@ -68,10 +68,10 @@
 // Destroyed Registers:
 //   %dx
 //   %al
-CXKDeclareFunction(SLSerialPortInit):
+XKDeclareFunction(SLSerialPortInit):
     SLSerialPortTest 1f
     pushw %cx
-    callq CXKFunction(SLSerialPortReset)
+    callq XKSymbol(SLSerialPortReset)
     popw %cx
     movw %cx, %dx
     addw $4, %dx
@@ -97,7 +97,7 @@ CXKDeclareFunction(SLSerialPortInit):
 //   %cx
 //   %dx
 //   %r8w
-CXKDeclareFunction(SLSerialPortReset):
+XKDeclareFunction(SLSerialPortReset):
     movb $0x80, %al
     movw %cx, %dx
     addw $3, %dx
@@ -140,7 +140,7 @@ CXKDeclareFunction(SLSerialPortReset):
 //   %dx
 //   %r8b
 //   %r9b
-CXKDeclareFunction(SLSerialPortSetupLineControl):
+XKDeclareFunction(SLSerialPortSetupLineControl):
     movb %dl, %al
     shlb $3, %r8b
     orb %r8b, %al
@@ -163,7 +163,7 @@ CXKDeclareFunction(SLSerialPortSetupLineControl):
 //   %dx
 //   %r8w
 //   %r9b
-CXKDeclareFunction(SLSerialPortSetBaudDivisor):
+XKDeclareFunction(SLSerialPortSetBaudDivisor):
     movw %dx, %r8w
     movw %cx, %dx
     addw $3, %dx
@@ -193,7 +193,10 @@ CXKDeclareFunction(SLSerialPortSetBaudDivisor):
 //   %eax
 //   %edx
 //   %r8d
-CXKDeclareFunction(SLSerialPortSetBaudRate):
+XKDeclareFunction(SLSerialPortSetBaudRate):
+    testl %edx, %edx
+    jz 1f
+
     movl $0x1C200, %eax
     movl %edx, %r8d
     xorl %edx, %edx
@@ -201,7 +204,7 @@ CXKDeclareFunction(SLSerialPortSetBaudRate):
     test %edx, %edx
     jnz 1f
     movl %eax, %edx
-    callq CXKFunction(SLSerialPortSetBaudDivisor)
+    callq XKSymbol(SLSerialPortSetBaudDivisor)
 
     1:
         ret
@@ -218,7 +221,7 @@ CXKDeclareFunction(SLSerialPortSetBaudRate):
 //   %ax
 //   %dx
 //   %r9b
-CXKDeclareFunction(SLSerialWriteCharacter):
+XKDeclareFunction(SLSerialWriteCharacter):
     movb %dl, %r9b
 
     cmpb $0x0A, %r9b
@@ -226,7 +229,7 @@ CXKDeclareFunction(SLSerialWriteCharacter):
     movb $0x0D, %dl
     shlw $8, %r8w
     orb $1, %r8b
-    callq CXKFunction(SLSerialWriteCharacter)
+    callq XKSymbol(SLSerialWriteCharacter)
     movb $0x0A, %r9b
     shrw $8, %r8w
 
@@ -265,7 +268,7 @@ CXKDeclareFunction(SLSerialWriteCharacter):
 //   %ax
 //   %dx
 //   %r8b
-CXKDeclareFunction(SLSerialReadCharacter):
+XKDeclareFunction(SLSerialReadCharacter):
     movb %dl, %r8b
     movw %cx, %dx
     addw $5, %dx
@@ -302,7 +305,7 @@ CXKDeclareFunction(SLSerialReadCharacter):
 //   %r8b
 //   %r10
 //   %dl
-CXKDeclareFunction(SLSerialWriteString):
+XKDeclareFunction(SLSerialWriteString):
     movq %rdx, %r10
     movb $1, %r8b
 
@@ -311,7 +314,7 @@ CXKDeclareFunction(SLSerialWriteString):
         testb %dl, %dl
         jz 2f
         incq %r10
-        callq CXKFunction(SLSerialWriteCharacter)
+        callq XKSymbol(SLSerialWriteCharacter)
         jmp 1b
 
     2:
@@ -331,7 +334,7 @@ CXKDeclareFunction(SLSerialWriteString):
 //   %r11
 //   %r9
 //   %dx
-CXKDeclareFunction(SLSerialReadString):
+XKDeclareFunction(SLSerialReadString):
     cmpb $0x0A, %dl
     movw $0x000D, %r11w
     cmovzw %r11w, %dx
@@ -346,11 +349,11 @@ CXKDeclareFunction(SLSerialReadString):
 
     1:
         movb $1, %dl
-        callq CXKFunction(SLSerialReadCharacter)
+        callq XKSymbol(SLSerialReadCharacter)
         movb %al, %dil
         movb %al, %dl
         movb $1, %r8b
-        callq CXKFunction(SLSerialWriteCharacter)
+        callq XKSymbol(SLSerialWriteCharacter)
         cmpb %r10b, %dil
         je 2f
         movb %dil, (%rbx)

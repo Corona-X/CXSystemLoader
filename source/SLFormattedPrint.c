@@ -1,6 +1,8 @@
-#include <SystemLoader/SystemLoader.h>
-#include <System/OSCompilerMacros.h>
+#include <SystemLoader/SLFormattedPrint.h>
+#include <SystemLoader/SLMemoryAllocator.h>
 #include <SystemLoader/SLLibrary.h>
+#include <System/OSByteMacros.h>
+#include <Kernel/XKMemory.h>
 
 #define kSLScanBufferSize 1024
 
@@ -182,7 +184,7 @@ OSPrivate OSUnicodePoint SLUTF16ToCodePoint(OSUTF16Char *input, OSCount inCount,
 
 OSSize SLUTF16SizeInUTF8(OSUTF16Char *utf16)
 {
-    OSLength stringLength = CXKStringSize16(utf16);
+    OSLength stringLength = XKStringSize16(utf16);
     OSSize size = 0;
 
     for (OSCount i = 0; i < stringLength; i++)
@@ -210,7 +212,7 @@ OSSize SLUTF16SizeInUTF8(OSUTF16Char *utf16)
 
 OSSize SLUTF8SizeInUTF16(OSUTF8Char *utf8)
 {
-    OSLength stringLength = CXKStringSize8(utf8);
+    OSLength stringLength = XKStringSize8(utf8);
     OSSize size = 0;
 
     for (OSCount i = 0; i < stringLength; i++)
@@ -239,7 +241,7 @@ OSUTF8Char *SLUTF16ToUTF8(OSUTF16Char *utf16)
     OSUTF8Char *result = SLAllocate((utf8size + 1) * sizeof(OSUTF8Char)).address;
     OSUTF8Char *utf8 = result;
 
-    OSCount utf16size = CXKStringSize16(utf16);
+    OSCount utf16size = XKStringSize16(utf16);
     OSUTF8Char *end = result + utf8size;
     OSCount used;
 
@@ -264,7 +266,7 @@ OSUTF16Char *SLUTF8ToUTF16(OSUTF8Char *utf8)
     OSUTF16Char *result = SLAllocate((utf16size + 1) * sizeof(OSUTF16Char)).address;
     OSUTF16Char *utf16 = result;
 
-    OSCount utf8size = CXKStringSize8(utf8);
+    OSCount utf8size = XKStringSize8(utf8);
     OSUTF16Char *end = result + utf16size;
     OSCount used;
 
@@ -327,7 +329,7 @@ void SLDeleteCharacters(OSCount count)
         } else if (console->moveBackward && console->output) {
             console->moveBackward(count, console->context);
             OSUTF8Char *spaces = SLAllocate(count).address;
-            CXKMemorySetValue(spaces, count, ' ');
+            XKMemorySetValue(spaces, count, ' ');
             console->output(spaces, count, console->context);
             SLFree(spaces);
             console->moveBackward(count, console->context);
@@ -358,7 +360,7 @@ UInt8 *SLScanString(UInt8 terminator, OSSize *size)
                         string[i++] = 0;
 
                         OSUTF8Char *result = SLAllocate(i).address;
-                        CXKMemoryCopy(string, result, i);
+                        XKMemoryCopy(string, result, i);
                         return result;
                     } else {
                         string[i++] = read;
@@ -442,11 +444,11 @@ void SLNumberToStringConverter(SInt64 n, bool isSigned, UInt8 base, UInt8 paddin
         if (padding) {
             if (!shouldPrint) {
                 (*string) = SLAllocate(padding + 1).address;
-                CXKMemorySetValue((*string), padding, '0');
+                XKMemorySetValue((*string), padding, '0');
                 (*string)[padding] = 0;
             } else {
                 OSUTF8Char *zeros = SLAllocate(padding).address;
-                CXKMemorySetValue(zeros, padding, '0');
+                XKMemorySetValue(zeros, padding, '0');
                 SLPrintChars(zeros, padding);
                 SLFree(zeros);
             }
@@ -484,10 +486,10 @@ void SLNumberToStringConverter(SInt64 n, bool isSigned, UInt8 base, UInt8 paddin
             (*string)[padding] = 0;
 
             if (prependNegative) {
-                CXKMemorySetValue((*string) + 1, zeroCount - 1, '0');
+                XKMemorySetValue((*string) + 1, zeroCount - 1, '0');
                 (*string)[0] = '-';
             } else {
-                CXKMemorySetValue((*string), zeroCount, '0');
+                XKMemorySetValue((*string), zeroCount, '0');
             }
 
             offset = zeroCount;
@@ -499,7 +501,7 @@ void SLNumberToStringConverter(SInt64 n, bool isSigned, UInt8 base, UInt8 paddin
             }
 
             OSUTF8Char *zeros = SLAllocate(zeroCount).address;
-            CXKMemorySetValue(zeros, zeroCount, '0');
+            XKMemorySetValue(zeros, zeroCount, '0');
             SLPrintChars(zeros, zeroCount);
             SLFree(zeros);
         }
@@ -569,14 +571,14 @@ void SLPrintString(const char *format, ...)
     OSVAFinish(args);
 }
 
-void SLConsoleCountOutputLength(OSUTF8Char *string, OSLength length, OSLength *previous)
+void SLConsolePrintToStringCount(OSUTF8Char *string, OSLength length, OSLength *previous)
 {
     (*previous) += length;
 }
 
 void SLConsolePrintToStringOutput(OSUTF8Char *newChars, OSLength length, OSUTF8Char **string)
 {
-    CXKMemoryCopy(newChars, (*string), length);
+    XKMemoryCopy(newChars, (*string), length);
     (*string) += length;
 }
 
@@ -588,7 +590,7 @@ OSUTF8Char *SLPrintToStringFromList(const char *format, OSVAList args)
 
     SLConsole *firstConsole = gSLFirstConsole;
     SLConsole lengthConsole;
-    lengthConsole.output = SLConsoleCountOutputLength;
+    lengthConsole.output = SLConsolePrintToStringCount;
     lengthConsole.context = &length;
     gSLFirstConsole = &lengthConsole;
     SLPrintStringFromList(format, copy);
@@ -749,7 +751,7 @@ void SLPrintStringFromList(const char *format, OSVAList args)
                 inEscapeCode = false;
 
                 OSUTF8Char *utf8string = OSVAGetNext(args, OSUTF8Char *);
-                SLPrintChars(utf8string, CXKStringSize8(utf8string));
+                SLPrintChars(utf8string, XKStringSize8(utf8string));
             } break;
             case 'S': {
                 inEscapeCode = false;
@@ -764,7 +766,7 @@ void SLPrintStringFromList(const char *format, OSVAList args)
                     break;
                 }
 
-                SLPrintChars(utf8string, CXKStringSize8(utf8string));
+                SLPrintChars(utf8string, XKStringSize8(utf8string));
                 SLFree(utf8string);
             } break;
             // Extension to print a hex string

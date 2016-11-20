@@ -1,5 +1,5 @@
-#include <SystemLoader/SystemLoader.h>
-#include <System/OSCompilerMacros.h>
+#include <SystemLoader/SLFormattedPrint.h>
+#include <SystemLoader/SLMemoryAllocator.h>
 #include <SystemLoader/SLLibrary.h>
 
 typedef UInt32 OSUnicodePoint;

@@ -9,6 +9,9 @@
 
 #include <Corona-X.h>
 #include <SystemLoader/SLBase.h>
+#include <SystemLoader/SLSerial.h>
+
+#if !kCXAssemblyCode
 
 typedef OSEnum(UInt8, SLFileConsoleMode) {
     kSLFileConsoleModeCreateNew,
@@ -69,5 +72,7 @@ typedef struct {
     OSPrivate SLConfigFile *SLConfigLoad(OSUTF8Char *path);
     OSPrivate SLConfigFile *SLConfigGet(void);
 #endif /* kCXBootloaderCode */
+
+#endif /* !kCXAssemblyCode */
 
 #endif /* !defined(__SYSTEMLOADER_SLCONFIGFILE__) */

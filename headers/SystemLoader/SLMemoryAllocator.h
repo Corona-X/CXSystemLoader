@@ -14,6 +14,8 @@
 #define kSLMemoryAllocatorPoolAlignment      16
 #define kSLMemoryAllocatorAllocAlignment     16
 
+#if !kCXAssemblyCode
+
 typedef struct __SLMemoryNode {
     struct __SLMemoryNode *next;
     UIntN size;
@@ -40,7 +42,6 @@ typedef struct {
     OSPrivate OSSize SLMemoryAllocatorGetCurrentHeapSize(void);
     OSPrivate OSBuffer SLMemoryAllocatorGetHeap(void);
 
-    //OSPrivate OSBuffer SLAllocateAligned(OSSize size, OSOffset alignment);
     OSPrivate bool SLDoesOwnMemory(OSAddress object);
     OSPrivate OSBuffer SLAllocate(OSSize size);
     OSPrivate OSBuffer SLReallocate(OSAddress object, OSSize newSize);
@@ -51,5 +52,7 @@ typedef struct {
         OSPrivate SLHeap *SLMemoryAllocatorGetRealHeap(void);
     #endif /* kCXBuildDev */
 #endif /* kCXBootloaderCode */
+
+#endif /* !kCXAssemblyCode */
 
 #endif /* !defined(__SYSTEMLOADER_SLMEMORYALLOCATOR__) */

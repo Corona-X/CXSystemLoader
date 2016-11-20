@@ -10,6 +10,8 @@
 #include <Corona-X.h>
 #include <SystemLoader/SLBase.h>
 
+#if !kCXAssemblyCode
+
 typedef struct {
     SLTableHeader header;
     OSAddress unused[14];
@@ -18,5 +20,7 @@ typedef struct {
 #if kCXBootloaderCode
     OSPrivate SLRuntimeServices *SLRuntimeServicesGetCurrent(void);
 #endif /* kCXBootloaderCode */
+
+#endif /* !kCXAssemblyCode */
 
 #endif /* !defined(__SYSTEMLOADER_SLRUNTIMESERVICES__) */

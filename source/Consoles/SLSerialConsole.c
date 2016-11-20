@@ -1,4 +1,7 @@
-#include <SystemLoader/SystemLoader.h>
+#include <SystemLoader/SLFormattedPrint.h>
+#include <SystemLoader/SLMemoryAllocator.h>
+#include <SystemLoader/SLConfigFile.h>
+#include <SystemLoader/SLSerial.h>
 
 typedef void (*SLConsoleOutput)(OSUTF8Char *string, OSSize size, OSAddress context);
 typedef UInt8 (*SLConsoleInput)(bool wait, OSAddress context);
@@ -54,7 +57,6 @@ void __SLSerialConsoleInitAll(void)
         console->context = port;
         console->output = SLSerialConsoleOutput;
         console->input = SLSerialConsoleInput;
-        console->height = console->width = 0;
         console->moveBackward = SLSerialConsoleMoveBackward;
         console->deleteCharacters = SLSerialConsoleDeleteCharacters;
 

@@ -9,26 +9,21 @@
 
 #include <Corona-X.h>
 #include <SystemLoader/SLBase.h>
-#include <Kernel/CXKBootOptions.h>
-#include <SystemLoader/SLSerial.h>
-#include <SystemLoader/SLConfigFile.h>
+#include <SystemLoader/EFI/SLSystemTable.h>
 
 #define kSLLoaderVersionString   "A.1"
-#define kSLLoaderBuildString     "0034"
+#define kSLLoaderBuildString     "0036"
 
 #define kSLLoaderWelcomeString   "Corona-X System Loader Version " kSLLoaderVersionString " [Build " kSLLoaderBuildString "]\r\n"
-#define kSLLoaderDataDirectory   "EFI/corona"
+#define kSLLoaderDataDirectory   "/EFI/corona"
 #define kSLLoaderConfigFile      "SLConfigFile"
 
-#if kCXBootloaderCode
+#if kCXBootloaderCode && !kCXAssemblyCode
     OSPrivate SLStatus CXSystemLoaderMain(OSAddress imageHandle, SLSystemTable *systemTable);
 
     #if kCXBuildDev
-        OSPrivate void SLLoaderSerial0OutputUTF8(UInt8 character);
-        OSPrivate void SLLoaderSetupSerial(void);
-
         OSPrivate void SLRunTests(void);
     #endif /* kCXBuildDev */
-#endif /* kCXBootloaderCode */
+#endif /* kCXBootloaderCode && !kCXAssemblyCode*/
 
 #endif /* !defined(__SYSTEMLOADER_SLLOADER__) */

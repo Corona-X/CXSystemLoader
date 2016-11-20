@@ -1,5 +1,8 @@
-#include <SystemLoader/SystemLoader.h>
+#include <SystemLoader/SLMemoryAllocator.h>
+#include <SystemLoader/EFI/SLBootServices.h>
+#include <SystemLoader/SLLibrary.h>
 #include <System/OSByteMacros.h>
+#include <Kernel/XKMemory.h>
 
 static bool initialized = false;
 static SLMemoryPool poolInfo;
@@ -34,7 +37,7 @@ OSBuffer SLMemoryAllocatorInit(void)
 void SLMemoryAllocatorSetHeap(OSBuffer newHeap)
 {
     if (heap.shouldFree)
-        SLBootServicesFree(SLMemoryAllocatorGetHeap());
+        SLBootServicesFree(SLMemoryAllocatorGetHeap().address);
 
     if (!OSBufferIsEmpty(newHeap))
     {
@@ -248,7 +251,7 @@ OSBuffer SLReallocate(OSAddress object, OSSize newSize)
     OSBuffer newBuffer = SLAllocate(newSize);
     if (OSBufferIsEmpty(newBuffer)) return kOSBufferEmpty;
 
-    CXKMemoryCopy(object, newBuffer.address, buffer.size - sizeof(OSSize));
+    XKMemoryCopy(object, newBuffer.address, buffer.size - sizeof(OSSize));
     SLFreeInPool(&poolInfo, buffer);
 
     return newBuffer;

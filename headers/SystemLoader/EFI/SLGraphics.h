@@ -11,6 +11,8 @@
 #include <SystemLoader/SLBase.h>
 #include <SystemLoader/SLBitmapFont.h>
 
+#if !kCXAssemblyCode
+
 typedef enum {
     kSLGraphicsPixelFormatRGBX8,
     kSLGraphicsPixelFormatBGRX8,
@@ -81,5 +83,7 @@ typedef struct {
         OSPrivate void SLGraphicsOutputDumpInfo(void);
     #endif /* kCXBuildDev */
 #endif /* kCXBootloaderCode */
+
+#endif /* !kCXAssemblyCode */
 
 #endif /* !defined(__SYSTEMLOADER_SLGRAPHICS__) */

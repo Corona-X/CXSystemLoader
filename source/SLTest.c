@@ -1,5 +1,5 @@
 #include <SystemLoader/SystemLoader.h>
-#include <SystemLoader/SLLibrary.h>
+#include <Kernel/XKMemory.h>
 
 #if kCXBuildDev
 
@@ -105,11 +105,11 @@ void SLTestMemoryOps(void)
     OSBuffer a = SLAllocate(s);
     OSBuffer b = SLAllocate(s);
 
-    CXKMemorySetValue(a.address, s, 0xCA);
-    CXKMemorySetValue(b.address, s, 0xDB);
-    SLPrintString("Memory Compare: %hd\n", CXKMemoryCompare(a.address, b.address, s));
+    XKMemorySetValue(a.address, s, 0xCA);
+    XKMemorySetValue(b.address, s, 0xDB);
+    SLPrintString("Memory Compare: %hd\n", XKMemoryCompare(a.address, b.address, s));
 
-    CXKMemoryCopy(a.address, b.address, s);
+    XKMemoryCopy(a.address, b.address, s);
     OSAddress aa = a.address;
     OSAddress ba = b.address;
 
@@ -124,12 +124,12 @@ void SLTestMemoryOps(void)
         ba += (4 * sizeof(UInt64));
     }
 
-    SLPrintString("Memory Compare: %hd\n\n", CXKMemoryCompare(a.address, b.address, s));
+    SLPrintString("Memory Compare: %hd\n\n", XKMemoryCompare(a.address, b.address, s));
     SLFree(b.address);
     SLFree(a.address);
 }
 
-#define SLPrintStringTest(l) SLPrintString("%zu, %zu, %zu, %zu, %zu\n", CXKStringSize ## l(utf ## l ## string0), CXKStringSize ## l(utf ## l ## string1), CXKStringSize ## l(utf ## l ## string2), CXKStringSize ## l(utf ## l ## string3), CXKStringSize ## l(utf ## l ## string4))
+#define SLPrintStringTest(l) SLPrintString("%zu, %zu, %zu, %zu, %zu\n", XKStringSize ## l(utf ## l ## string0), XKStringSize ## l(utf ## l ## string1), XKStringSize ## l(utf ## l ## string2), XKStringSize ## l(utf ## l ## string3), XKStringSize ## l(utf ## l ## string4))
 
 void SLTestStringLengths(void)
 {
@@ -165,7 +165,7 @@ void SLTestStringLengths(void)
 void SLRunTests(void)
 {
     //SLFree(SLAllocate(8192));
-    CXKMemoryMap *map = SLBootServicesTerminate();
+    SLMemoryMap *map = SLBootServicesTerminate();
     SLPrintString("!!!Terminated Boot Services [final memory map @ %p]!!!\n", map);
 
     SLPrintString("Running Formatted Print Test...\n\n");

@@ -1,4 +1,5 @@
-#include <SystemLoader/SystemLoader.h>
+#include <SystemLoader/SLBitmapFont.h>
+#include <SystemLoader/SLMemoryAllocator.h>
 
 #if kCXDebug
 UInt8 gSLBitmapFont8x16Data[256 * 16] = {
@@ -394,7 +395,9 @@ unsigned char __apple_xnu_font[256*16] = {
     /* 255 */ 0x00,0x00,0x36,0x36,0x00,0x63,0x63,0x36,0x36,0x1c,0x1c,0x0c,0x0c,0x06,0x03,0x00
 };
 
-SLBitmapFont gSLBitmapFont8x16 = {
+SLBitmapFont *gSLBitmapFont8x16;
+
+SLBitmapFont gSLBitmapFont8x16Raw = {
     .height = 16,
     .width  = 8,
 };
@@ -427,8 +430,9 @@ void SLUnpackFont(SLBitmapFont *font)
 
 void __SLBitmapFontInitialize(void)
 {
-    gSLBitmapFont8x16.packedData = __apple_xnu_font;
+    gSLBitmapFont8x16 = &gSLBitmapFont8x16Raw;
+    gSLBitmapFont8x16->packedData = __apple_xnu_font;
 
-    SLUnpackFont(&gSLBitmapFont8x16);
+    SLUnpackFont(gSLBitmapFont8x16);
 }
 #endif /* kCXDebug */

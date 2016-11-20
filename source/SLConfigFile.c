@@ -1,5 +1,8 @@
-#include <SystemLoader/SystemLoader.h>
-#include <Kernel/CXKMemory.h>
+#include <SystemLoader/SLConfigFile.h>
+#include <SystemLoader/SLMemoryAllocator.h>
+#include <SystemLoader/SLLoader.h>
+#include <SystemLoader/EFI/SLFile.h>
+#include <Kernel/XKMemory.h>
 
 SLConfigFile *gSLCurrentConfig = kOSNullPointer;;
 
@@ -45,7 +48,7 @@ SLConfigFile *SLConfigLoad(OSUTF8Char *path)
     gSLCurrentConfig->dev.videoConsole.maxScreenHeight = 900;
     gSLCurrentConfig->dev.videoConsole.maxScreenCount = 1;
 
-    SLFile *file = SLOpenPath(path);
+    SLFile *file = SLOpenPath(path, kSLFileModeRead);
     if (!file) return gSLCurrentConfig;
 
     SLCloseFile(file);

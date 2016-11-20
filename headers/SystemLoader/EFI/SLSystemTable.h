@@ -11,7 +11,9 @@
 #include <SystemLoader/SLBase.h>
 #include <SystemLoader/EFI/SLRuntimeServices.h>
 #include <SystemLoader/EFI/SLBootServices.h>
-#include <Kernel/CoreDriver/CDACPI.h>
+#include <Kernel/CoreDriver/ACPI/CDACPI.h>
+
+#if !kCXAssemblyCode
 
 typedef struct {
     SLProtocol id;
@@ -40,5 +42,7 @@ typedef struct {
         OSPrivate void SLSystemTableDumpConfigTables(SLSystemTable *table);
     #endif /* kCXBuildDev */
 #endif /* kCXBootloaderCode */
+
+#endif /* !kCXAssemblyCode */
 
 #endif /* !defined(__SYSTEMLOADER_SLSYSTEMTABLE__) */

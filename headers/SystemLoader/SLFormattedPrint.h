@@ -10,7 +10,7 @@
 #include <Corona-X.h>
 #include <SystemLoader/SLBase.h>
 
-#define kSLConsoleMaxNumber 8
+#if !kCXAssemblyCode
 
 typedef void (*SLConsoleOutput)(OSUTF8Char *string, OSSize size, OSAddress context);
 typedef UInt8 (*SLConsoleInput)(bool wait, OSAddress context);
@@ -25,9 +25,6 @@ typedef struct __SLConsole {
 
     SLConsoleOutput output;
     SLConsoleInput input;
-
-    UInt16 height;
-    UInt16 width;
 
     SLConsoleMoveBackward moveBackward;
     SLConsoleDeleteCharacters deleteCharacters;
@@ -56,5 +53,9 @@ typedef struct __SLConsole {
     OSPrivate SInt8 SLRegisterConsole(SLConsole *console);
     OSExport SLConsole *gSLFirstConsole;
 #endif /* kCXBuildDev */
+
+extern void SLPS(const char *s, ...);
+
+#endif /* !kCXAssemblyCode */
 
 #endif /* !defined(__SYSTEMLOADER_SLFORMATTEDPRINT__) */

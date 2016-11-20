@@ -1,32 +1,40 @@
-#include <SystemLoader/SystemLoader.h>
+#include <SystemLoader/EFI/SLFile.h>
+#include <SystemLoader/EFI/SLLoadedImage.h>
+#include <SystemLoader/SLMemoryAllocator.h>
 #include <SystemLoader/SLLibrary.h>
 
 SLFile *SLGetRootDirectoryForImage(OSAddress imageHandle)
 {
+    SLBootServicesCheck(kOSNullPointer);
+
     SLLoadedImage *loadedImage = SLLoadedImageGetFromHandle(imageHandle);
     if (!loadedImage) return kOSNullPointer;
 
     return SLLoadedImageGetRoot(loadedImage);
 }
 
-SLFile *SLOpenChild(SLFile *parent, OSUTF8Char *child)
+SLFile *SLOpenChild(SLFile *parent, OSUTF8Char *child, UInt8 mode)
 {
+    SLBootServicesCheck(kOSNullPointer);
+
     SLFile *file;
-    SLStatus status = parent->open(parent, &file, child, kSLFileModeRead, 0);
+    SLStatus status = parent->open(parent, &file, child, mode, 0);
     bool failed = SLStatusIsError(status);
 
     return (failed ? kOSNullPointer : file);
 }
 
-SLFile *SLOpenPath(OSUTF8Char *path)
+SLFile *SLOpenPath(OSUTF8Char *path, UInt8 mode)
 {
+    SLBootServicesCheck(kOSNullPointer);
+
     OSUTF16Char *efiPath = SLPathToEFIPath(path);
     if (!efiPath) return kOSNullPointer;
 
     SLFile *root = SLGetRootDirectoryForImage(SLGetMainImageHandle());
     if (!root) return kOSNullPointer;
 
-    SLFile *child = SLOpenChild(root, efiPath);
+    SLFile *child = SLOpenChild(root, efiPath, mode);
     if (!child) return kOSNullPointer;
 
     return child;
@@ -69,11 +77,11 @@ OSBuffer SLFileReadFully(SLFile *file)
     OSBuffer buffer = SLAllocate(fileInfo.size);
     if (OSBufferIsEmpty(buffer)) return buffer;
     status = file->read(file, &buffer.size, buffer.address);
-    
+
     if (SLStatusIsError(status))
     {
         buffer.size = fileInfo.size;
-        SLBootServicesFree(buffer);
+        SLFree(buffer.address);
         
         return kOSBufferEmpty;
     }
@@ -83,7 +91,7 @@ OSBuffer SLFileReadFully(SLFile *file)
 
 bool SLReadPath(OSUTF8Char *path, OSOffset offset, OSBuffer readBuffer)
 {
-    SLFile *file = SLOpenPath(path);
+    SLFile *file = SLOpenPath(path, kSLFileModeRead);
     if (!file) return false;
     
     bool success = SLFileRead(file, offset, readBuffer);
@@ -97,7 +105,7 @@ bool SLReadPath(OSUTF8Char *path, OSOffset offset, OSBuffer readBuffer)
 
 OSBuffer SLReadPathFully(OSUTF8Char *path)
 {
-    SLFile *file = SLOpenPath(path);
+    SLFile *file = SLOpenPath(path, kSLFileModeRead);
     if (!file) return kOSBufferEmpty;
     
     OSBuffer result = SLFileReadFully(path);
@@ -106,7 +114,7 @@ OSBuffer SLReadPathFully(OSUTF8Char *path)
     if (SLStatusIsError(status))
     {
         if (!OSBufferIsEmpty(result))
-            SLBootServicesFree(result);
+            SLFree(result.address);
         
         result = kOSBufferEmpty;
     }
@@ -114,7 +122,7 @@ OSBuffer SLReadPathFully(OSUTF8Char *path)
     return result;
 }
 
-OSUTF16Char *SLPathToEFIPath(OSUTF16Char *path)
+OSUTF16Char *SLPathToEFIPath(OSUTF8Char *path)
 {
     return kOSNullPointer;
 }

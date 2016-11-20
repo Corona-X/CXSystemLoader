@@ -1,9 +1,9 @@
-#include <Kernel/CXKAssembly.h>
+#include <Kernel/XKAssembly.h>
 
 #if kCXArchIA
 
-.section kCXKCodeSectionName
-.align kCXKNaturalAlignment
+.section kXKCodeSectionName
+.align kXKNaturalAlignment
 
 // Arguments:
 //   %rcx: Image Handle
@@ -23,51 +23,51 @@
 //
 // If Debug:
 //
-CXKDeclareFunction(_SLEntry):
+XKDeclareFunction(_SLEntry):
     movq (%rsp), %rax
 
-    CXKLoadSymbol(gSLFirmwareReturnAddress, %rbx)
+    XKLoadSymbol(gSLFirmwareReturnAddress, %rbx)
     movq %rax, (%rbx)
 
-    CXKLoadSymbol(gSLLoaderImageHandle, %rbx)
+    XKLoadSymbol(gSLLoaderImageHandle, %rbx)
     movq %rcx, (%rbx)
 
-    CXKLoadSymbol(gSLLoaderSystemTable, %rbx)
+    XKLoadSymbol(gSLLoaderSystemTable, %rbx)
     movq %rdx, (%rbx)
 
     #if kCXBuildDev && !kCXTargetOSApple
         leaq gSLLoaderBase(%rip), %rbx
         leaq gSLLoaderEnd(%rip), %rax
         subq %rbx, %rax
-        CXKLoadSymbol(gSLLoaderImageSize, %rbx)
+        XKLoadSymbol(gSLLoaderImageSize, %rbx)
         movq %rax, (%rbx)
 
-        CXKLoadSymbol(gSLEnableScreenPrint, %rbx)
+        XKLoadSymbol(gSLEnableScreenPrint, %rbx)
         movb $1, (%rbx)
     #endif /* kCXBuildDev */
 
-    CXKLoadSymbol(gSLBootServicesEnabled, %rbx)
+    XKLoadSymbol(gSLBootServicesEnabled, %rbx)
     movb $1, (%rbx)
 
-    leaq CXKFunction(SLMemoryAllocatorInit)(%rip), %rax
-    callq *%rax
-
     #if kCXBuildDev
-        leaq CXKFunction(__SLLibraryInitialize)(%rip), %rax
+        leaq XKSymbol(__SLLibraryInitialize)(%rip), %rax
+        callq *%rax
+    #else /* !kCXBuildDev */
+        leaq XKSymbol(SLMemoryAllocatorInit)(%rip), %rax
         callq *%rax
     #endif /* kCXBuildDev */
 
-    CXKLoadSymbol(gSLLoaderImageHandle, %rcx)
-    CXKLoadSymbol(gSLLoaderSystemTable, %rdx)
+    XKLoadSymbol(gSLLoaderImageHandle, %rcx)
+    XKLoadSymbol(gSLLoaderSystemTable, %rdx)
 
-    leaq CXKFunction(CXSystemLoaderMain)(%rip), %rax
+    leaq XKSymbol(CXSystemLoaderMain)(%rip), %rax
     callq *%rax
 
     movq %rax, %rcx
-    leaq CXKFunction(SLLeave)(%rip), %rax
+    leaq XKSymbol(SLLeave)(%rip), %rax
     callq *%rax
 
-.align kCXKNaturalAlignment
+.align kXKNaturalAlignment
 
 // Arguments:
 //   %rcx: Exit Code
@@ -75,13 +75,13 @@ CXKDeclareFunction(_SLEntry):
 // This function will exit the loader
 // without returning. It can do pretty
 // much whatever it wants...
-CXKDeclareFunction(SLLeave):
+XKDeclareFunction(SLLeave):
     movq %rcx, %rdx
-    CXKLoadSymbol(gSLLoaderImageHandle, %rbx)
+    XKLoadSymbol(gSLLoaderImageHandle, %rbx)
     movq (%rbx), %rcx
     xorq %r8, %r8
     xorq %r9, %r9
-    CXKLoadSymbol(gSLLoaderSystemTable, %rax)
+    XKLoadSymbol(gSLLoaderSystemTable, %rax)
     movq (%rax), %rbx
     movq 0x60(%rbx), %rax
     callq *0xD8(%rax)
@@ -89,20 +89,20 @@ CXKDeclareFunction(SLLeave):
     // If we're here, there was an error exiting.
     // Return to the address given by the firmware
     // on the initial program stack (saved in entry)
-    CXKLoadSymbol(gSLFirmwareReturnAddress, %rbx)
+    XKLoadSymbol(gSLFirmwareReturnAddress, %rbx)
     movq (%rbx), %rax // Load return address into accumulator
     popq %rbx         // Kill real return address on the stack
     pushq (%rax)      // Inject firmware return address
     ret               // Return to given address
 
-.comm CXKSymbol(gSLFirmwareReturnAddress), 8, 8
-.comm CXKSymbol(gSLLoaderSystemTable),     8, 8
-.comm CXKSymbol(gSLLoaderImageHandle),     8, 8
-.comm CXKSymbol(gSLBootServicesEnabled),   1, 1
+.comm XKSymbol(gSLFirmwareReturnAddress), 8, 8
+.comm XKSymbol(gSLLoaderSystemTable),     8, 8
+.comm XKSymbol(gSLLoaderImageHandle),     8, 8
+.comm XKSymbol(gSLBootServicesEnabled),   1, 1
 
 #if kCXBuildDev
-    .comm CXKSymbol(gSLLoaderImageSize),   8, 8
-    .comm CXKSymbol(gSLEnableScreenPrint), 1, 1
+    .comm XKSymbol(gSLLoaderImageSize),   8, 8
+    .comm XKSymbol(gSLEnableScreenPrint), 1, 1
 #endif /* kCXBuildDev */
 
 #if kCXTargetOSLinux

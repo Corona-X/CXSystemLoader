@@ -1,5 +1,4 @@
 #include <SystemLoader/SystemLoader.h>
-#include <Kernel/CXKProcessorState.h>
 
 SLStatus CXSystemLoaderMain(OSAddress imageHandle, SLSystemTable *systemTable)
 {

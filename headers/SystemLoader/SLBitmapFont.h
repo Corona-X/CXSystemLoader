@@ -10,6 +10,8 @@
 #include <Corona-X.h>
 #include <SystemLoader/SLBase.h>
 
+#if !kCXAssemblyCode
+
 typedef struct {
     UInt32 height;
     UInt32 width;
@@ -17,6 +19,8 @@ typedef struct {
     UInt32 *fontData;
 } SLBitmapFont;
 
-OSExport SLBitmapFont gSLBitmapFont8x16;
+OSExport SLBitmapFont *gSLBitmapFont8x16;
+
+#endif /* !kCXAssemblyCode */
 
 #endif /* !defined(__SYSTEMLOADER_SLBITMAPFONT__) */

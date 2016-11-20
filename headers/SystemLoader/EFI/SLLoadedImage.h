@@ -11,6 +11,8 @@
 #include <SystemLoader/SLBase.h>
 #include <SystemLoader/EFI/SLFile.h>
 
+#if !kCXAssemblyCode
+
 typedef struct {
     UInt32 revision;
     OSAddress unused1[2];
@@ -28,5 +30,7 @@ typedef struct {
     OSPrivate SLLoadedImage *SLLoadedImageGetFromHandle(OSAddress imageHandle);
     OSPrivate SLFile *SLLoadedImageGetRoot(SLLoadedImage *image);
 #endif /* kCXBootloaderCode */
+
+#endif /* !kCXAssemblyCode */
 
 #endif /* !defined(__SYSTEMLOADER_SLLOADEDIMAGE__) */

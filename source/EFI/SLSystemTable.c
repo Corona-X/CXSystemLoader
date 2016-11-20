@@ -1,4 +1,7 @@
-#include <SystemLoader/SystemLoader.h>
+#include <SystemLoader/EFI/SLSystemTable.h>
+#include <SystemLoader/SLMemoryAllocator.h>
+#include <SystemLoader/SLFormattedPrint.h>
+#include <SystemLoader/SLLibrary.h>
 
 SLSystemTable *SLSystemTableGetCurrent(void)
 {

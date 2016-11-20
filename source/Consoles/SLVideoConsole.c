@@ -1,4 +1,9 @@
-#include <SystemLoader/SystemLoader.h>
+#include <SystemLoader/SLFormattedPrint.h>
+#include <SystemLoader/SLMemoryAllocator.h>
+#include <SystemLoader/SLConfigFile.h>
+#include <SystemLoader/EFI/SLGraphics.h>
+#include <System/OSByteMacros.h>
+#include <Kernel/XKMemory.h>
 
 #if kCXDebug
 
@@ -9,6 +14,8 @@ typedef struct {
     SLGraphicsPoint cursor;
     UInt32 baseOffsetX;
     UInt32 baseOffsetY;
+    UInt32 height;
+    UInt32 width;
     UInt32 color;
     UInt32 backgroundColor;
     bool isBackground;
@@ -17,23 +24,23 @@ typedef struct {
 
 void SLVideoConsoleSanitizeCursor(SLVideoConsole *console)
 {
-    if (console->cursor.x >= console->rootConsole.width)
+    if (console->cursor.x >= console->width)
     {
         console->cursor.x = 0;
         console->cursor.y++;
     }
 
-    if (console->cursor.y >= console->rootConsole.height)
+    if (console->cursor.y >= console->height)
     {
-        UInt32 rows = (console->rootConsole.height - console->cursor.y) + 1;
+        UInt32 rows = (console->height - console->cursor.y) + 1;
 
         OSCount blankPixelCount = console->context->width * rows * console->selectedFont->height;
         OSAddress blankOffset = (console->context->framebuffer + console->context->pixelCount) - blankPixelCount;
         OSAddress framebufferOffset = console->context->framebuffer + blankPixelCount;
         OSSize pixelCount = console->context->pixelCount - blankPixelCount;
 
-        CXKMemoryCopy(framebufferOffset, console->context->framebuffer, pixelCount * sizeof(UInt32));
-        CXKMemorySetValue(blankOffset, blankPixelCount * sizeof(UInt32), 0x00);
+        XKMemoryCopy(framebufferOffset, console->context->framebuffer, pixelCount * sizeof(UInt32));
+        XKMemorySetValue(blankOffset, blankPixelCount * sizeof(UInt32), 0x00);
 
         console->cursor.y -= rows;
     }
@@ -113,7 +120,7 @@ void SLVideoConsoleOutputCharacter(UInt8 character, SLVideoConsole *console)
             if (!console->cursor.x) {
                 if (console->cursor.y)
                 {
-                    console->cursor.x = console->rootConsole.width - 1;
+                    console->cursor.x = console->width - 1;
                     console->cursor.y--;
                 }
             } else {
@@ -151,7 +158,7 @@ UInt8 SLVideoConsoleInput(bool wait, SLVideoConsole *console)
 void SLVideoConsoleMoveBackward(OSCount spaces, SLVideoConsole *console)
 {
     UInt8 *backspaces = SLAllocate(spaces).address;
-    CXKMemorySetValue(backspaces, spaces, '\b');
+    XKMemorySetValue(backspaces, spaces, '\b');
     SLVideoConsoleOutput(backspaces, spaces, console);
     SLFree(backspaces);
 }
@@ -159,11 +166,11 @@ void SLVideoConsoleMoveBackward(OSCount spaces, SLVideoConsole *console)
 void SLVideoConsoleDeleteCharacters(OSCount count, SLVideoConsole *console)
 {
     UInt8 *spaces = SLAllocate(count).address;
-    CXKMemorySetValue(spaces, count, '\b');
+    XKMemorySetValue(spaces, count, '\b');
     SLVideoConsoleOutput(spaces, count, console);
-    CXKMemorySetValue(spaces, count, ' ');
+    XKMemorySetValue(spaces, count, ' ');
     SLVideoConsoleOutput(spaces, count, console);
-    CXKMemorySetValue(spaces, count, '\b');
+    XKMemorySetValue(spaces, count, '\b');
     SLVideoConsoleOutput(spaces, count, console);
     SLFree(spaces);
 }
@@ -198,13 +205,15 @@ void __SLVideoConsoleInitAll(void)
             break;
 
         SLGraphicsContext *context = SLGraphicsOutputGetContextWithMaxSize(screen, config->dev.videoConsole.maxScreenHeight, config->dev.videoConsole.maxScreenWidth);
-        CXKMemorySetValue(context->framebuffer, context->framebufferSize, 0x00);
+        XKMemorySetValue(context->framebuffer, context->framebufferSize, 0x00);
         SLVideoConsole *console = SLAllocate(sizeof(SLVideoConsole)).address;
 
-        console->selectedFont = &gSLBitmapFont8x16;
+        console->selectedFont = gSLBitmapFont8x16;
         console->context = context;
         console->cursor = ((SLGraphicsPoint){0, 0});
         console->inEscapeCode = false;
+        console->height = context->height / console->selectedFont->height;
+        console->width  = context->width  / console->selectedFont->width;
 
         if (context->isBGRX) {
             UInt32 backgroundColor = config->dev.videoConsole.backgroundColor;
@@ -225,9 +234,7 @@ void __SLVideoConsoleInitAll(void)
         console->rootConsole.context = console;
         console->rootConsole.output = SLVideoConsoleOutput;
         console->rootConsole.input = SLVideoConsoleInput;
-        console->rootConsole.height = context->height / console->selectedFont->height;
         console->baseOffsetY =       (context->height % console->selectedFont->height) / 2;
-        console->rootConsole.width  = context->width  / console->selectedFont->width;
         console->baseOffsetX =       (context->width  % console->selectedFont->width)  / 2;
         console->rootConsole.deleteCharacters = SLVideoConsoleDeleteCharacters;
         console->rootConsole.moveBackward = SLVideoConsoleMoveBackward;
