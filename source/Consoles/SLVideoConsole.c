@@ -187,7 +187,7 @@ void __SLVideoConsoleInitAll(void)
     if (!config->dev.videoConsole.enabled)
         return;
 
-    SLGraphicsOutput **screens = SLGraphicsOutputGetAll();
+    SLGraphicsOutput **screens = SLGraphicsOutputGetAll(kOSNullPointer);
     UInt8 count = 0;
 
     if (!screens)

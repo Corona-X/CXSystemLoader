@@ -257,6 +257,11 @@ OSBuffer SLReallocate(OSAddress object, OSSize newSize)
     return newBuffer;
 }
 
+void SLFreeBuffer(OSBuffer buffer)
+{
+    SLFree(buffer.address);
+}
+
 void SLFree(OSAddress object)
 {
     if (!object) return;

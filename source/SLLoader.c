@@ -1,45 +1,93 @@
 #include <SystemLoader/SystemLoader.h>
+#include <System/OSCompilerMacros.h>
+#include <Kernel/XKShared.h>
+
+void SLDumpConsoles(void)
+{
+    XKPrintString("Consoles:\n");
+
+    SLConsole *console = gSLFirstConsole;
+    
+    while (console)
+    {
+        XKPrintString("%u: %p\n", console->id, console);
+        XKPrintString("  --> context: %p\n", console->context);
+        XKPrintString("  --> output:  %p\n", console->output);
+        XKPrintString("  --> next:    %p\n", console->next);
+        
+        console = console->next;
+    }
+}
+
+void SLPromptTests(void)
+{
+    bool runRequested = SLPromptUser("Run Tests");
+    
+    if (runRequested)
+    {
+        SLShowDelay("Running", 2);
+        SLRunTests();
+    }
+}
+
+OSNoReturn void SLShutdownVirtualMachine(void)
+{
+    // Let the user read on-screen output first
+    if (!SLBootServicesHaveTerminated())
+        SLWaitForKeyPress();
+
+    // QEMU lets us just do this
+    XKWriteIOByte(0xF4, 0x00);
+    OSEndCode();
+}
 
 SLStatus CXSystemLoaderMain(OSAddress imageHandle, SLSystemTable *systemTable)
 {
+    SLPrintError("%s(%p, %p) called\n", __func__, imageHandle, systemTable);
+    SLPrintError("Note: Should be %p, %p", SLSystemTableGetCurrent(), SLGetMainImageHandle());
+
     #if kCXBuildDev
-        SLSetVideoColor(0x8202FF, false);
+        //SLSetVideoColor(0x8202FF, false);
         SLPrintString(kSLLoaderWelcomeString);
-        SLSetVideoColor(0x00FFFFFF, false);
+        //SLSetVideoColor(0x00FFFFFF, false);
 
-        SLPS("Consoles:\n");
+        SLGraphicsOutputDumpInfo();
+        SLDumpConsoles();
 
-        SLConsole *console = gSLFirstConsole;
+        SLPromptTests();
 
-        while (console)
-        {
-            SLPS("%u: %p\n", console->id, console);
-            SLPS("  --> context: %p\n", console->context);
-            SLPS("  --> output:  %p\n", console->output);
-            SLPS("  --> next:    %p\n", console->next);
-
-            console = console->next;
-        }
-
-        bool runRequested = SLPromptUser("Run Tests", 0x03F8);
-
-        if (runRequested)
-        {
-            SLShowDelay("Running", 2);
-            SLRunTests();
-        }
-
-        SLPrintString("Starting Loader. CPU States:\n");
+        SLPrintString("Starting Loader... Initial CPU States:\n");
         SLDumpProcessorState(true, true, true);
 
-        if (!SLBootServicesHaveTerminated())
-            SLWaitForKeyPress();
+        SLPrintString("Dumping UEFI System Table Configuration Entries:\n");
+        SLSystemTableDumpConfigTables(SLSystemTableGetCurrent());
+
+        CPRootDescriptor *rootDescriptor = SLSystemTableGetACPIRoot(SLSystemTableGetCurrent());
+
+        if (!rootDescriptor)
+        {
+            SLPrintString("Error: No valid ACPI Root Table found! (Does thie machine have the proper version of ACPI?)\n");
+            SLShutdownVirtualMachine();
+        }
+
+        UInt8 manufacturer[7];
+        XKMemoryCopy(CPRootDescriptorGetManufacturerID(rootDescriptor), manufacturer, 6);
+        manufacturer[6] = 0;
+
+        SLPrintString("Note: Discovered valid ACPI Root Descriptor at %p\n", rootDescriptor);
+        SLPrintString("Note: ACPI manufacturer is '%s'\n", manufacturer);
+
+        CPRootTable *rootTable = CPRootDescriptorGetRootTable(rootDescriptor);
+
+        if (!rootTable)
+        {
+            SLPrintString("Error: Could not detect valid ACPI Root Table from the Root Descriptor!\n");
+            SLShutdownVirtualMachine();
+        }
+
+        SLPrintString("Note: Discovered valid ACPI Root Table at %p\n", rootTable);
+        SLPrintString("Note: Root Table has %zu entries\n", CPRootTableGetEntryCount(rootTable));
     #endif /* kCXBuildDev */
 
-    if (SLBootServicesHaveTerminated()) {
-        for ( ; ; )
-            SLDelayProcessor(10000000, false);
-    } else {
-        return kSLStatusSuccess;
-    }
+    SLShutdownVirtualMachine();
 }

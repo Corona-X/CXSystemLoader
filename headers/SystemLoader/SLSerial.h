@@ -11,8 +11,8 @@
 #include <SystemLoader/SLBase.h>
 
 #if kCXBuildDev
-    #define kSLSerialAssumedClockSpeed 1843200
-    #define kSLSerialPortError         0xFFFF
+    #define kSLSerialAssumedClockSpeed  1843200
+    #define kSLSerialPortError          0xFFFF
 
     #define kSLSerialWordLength5Bits    0x0
     #define kSLSerialWordLength6Bits    0x1
@@ -31,11 +31,11 @@
     #if kCXBootloaderCode && !kCXAssemblyCode
         typedef UInt16 SLSerialPort;
 
-        OSPrivate SLABI SLSerialPort SLSerialPortInit(OSAddress portBase);
-        OSPrivate SLABI void SLSerialPortReset(SLSerialPort port);
-        OSPrivate SLABI void SLSerialPortSetupLineControl(SLSerialPort port, UInt8 size, UInt8 parity, UInt8 stop);
-        OSPrivate SLABI void SLSerialPortSetBaudDivisor(SLSerialPort port, UInt16 divisor);
-        OSPrivate SLABI void SLSerialPortSetBaudRate(SLSerialPort port, UInt32 rate);
+        OSPrivate SLSerialPort SLSerialPortInit(OSAddress portBase);
+        OSPrivate void SLSerialPortReset(SLSerialPort port);
+        OSPrivate void SLSerialPortSetupLineControl(SLSerialPort port, UInt8 size, UInt8 parity, UInt8 stop);
+        OSPrivate void SLSerialPortSetBaudDivisor(SLSerialPort port, UInt16 divisor);
+        OSPrivate void SLSerialPortSetBaudRate(SLSerialPort port, UInt32 rate);
 
         OSPrivate SLABI void SLSerialWriteCharacter(SLSerialPort port, UInt8 character, bool block);
         OSPrivate SLABI UInt8 SLSerialReadCharacter(SLSerialPort port, bool block);

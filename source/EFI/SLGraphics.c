@@ -1,24 +1,24 @@
 #include <SystemLoader/EFI/SLGraphics.h>
 #include <SystemLoader/EFI/SLBootServices.h>
 #include <SystemLoader/SLMemoryAllocator.h>
+#include <SystemLoader/SLFormattedPrint.h>
 #include <SystemLoader/SLLibrary.h>
 
-SLGraphicsOutput **SLGraphicsOutputGetAll(void)
+SLGraphicsOutput **SLGraphicsOutputGetAll(OSCount *count)
 {
     SLBootServicesCheck(kOSNullPointer);
 
     SLBootServices *bootServices = SLBootServicesGetCurrent();
     SLProtocol protocol = kSLGraphicsOutputProtocol;
     OSAddress *devices;
-    UIntN count;
+    UIntN screenCount;
 
-    SLStatus status = bootServices->localeHandles(kSLSearchTypeByProtocol, &protocol, kOSNullPointer, &count, &devices);
+    SLStatus status = bootServices->localeHandles(kSLSearchTypeByProtocol, &protocol, kOSNullPointer, &screenCount, &devices);
     if (SLStatusIsError(status)) return kOSNullPointer;
 
-    SLGraphicsOutput **results = SLAllocate((count + 1) * sizeof(SLGraphicsOutput *)).address;
-    results[count] = kOSNullPointer;
+    SLGraphicsOutput **results = SLAllocate(screenCount * sizeof(SLGraphicsOutput *)).address;
 
-    for (OSCount i = 0; i < count; i++)
+    for (OSCount i = 0; i < screenCount; i++)
     {
         SLGraphicsOutput *output;
         status = bootServices->handleProtocol(devices[i], &protocol, &output);
@@ -28,6 +28,7 @@ SLGraphicsOutput **SLGraphicsOutputGetAll(void)
     }
 
     if (!SLBootServicesFree(devices)) goto failure;
+    if (count) (*count) = screenCount;
     return results;
 
 failure:
@@ -160,8 +161,64 @@ void SLGraphicsContextWritePrerenderedCharacter(SLGraphicsContext *context, UInt
 }
 
 #if kCXBuildDev
-    void SLGraphicsOutputDumpInfo(void)
+    bool SLGraphicsOutputDumpInfo(void)
     {
-        SLBootServicesCheck((void)(0));
+        SLBootServicesCheck(false);
+
+        OSCount count;
+        SLGraphicsOutput **screens = SLGraphicsOutputGetAll(&count);
+
+        if (!screens)
+        {
+            SLPrintString("Error: Could not enumerate connected screens\n");
+            return false;
+        }
+
+        SLPrintString("Detected %zu connected screens.\n", count);
+        SLPrintString("Screen info:\n");
+
+        for (OSCount i = 0; i < count; i++)
+        {
+            UInt32 modeCount = screens[i]->mode->numberOfModes;
+
+            SLPrintString("screens[%u]: {\n", i);
+            SLPrintString("    Address:          %p\n", screens[i]);
+            SLPrintString("    Current Mode:     %u\n", screens[i]->mode->currentMode);
+            SLPrintString("    Framebuffer Size: %zu\n", screens[i]->mode->framebufferSize);
+            SLPrintString("    Framebuffer:      %p\n", screens[i]->mode->framebuffer);
+            SLPrintString("    Modes (%u):\n", modeCount);
+
+            for (UInt32 j = 0; j < modeCount; j++)
+            {
+                SLGraphicsModeInfo *mode = SLGraphicsOutputGetMode(screens[i], j);
+                const char *format;
+
+                if (!mode)
+                {
+                    SLPrintString("Error: Could not get mode %d\n", j);
+                    return false;
+                }
+
+                switch (mode->format)
+                {
+                    case kSLGraphicsPixelFormatRGBX8:   format = "RGB";      break;
+                    case kSLGraphicsPixelFormatBGRX8:   format = "BGR";      break;
+                    case kSLGraphicsPixelFormatBitMask: format = "Bit Mask"; break;
+                    case kSLGraphicsPixelFormatBLT:     format = "BLT";      break;
+                }
+
+                SLPrintString("        %03u: ", j);
+                SLPrintString("{%p: %04ux%04u ", mode, mode->width, mode->height);
+                SLPrintString("[%s; v%u;  ", format, mode->version);
+                SLPrintString("%04u PPS]}\n", mode->pixelsPerScanline);
+            }
+
+            SLPrintString("}, ");
+        }
+
+        SLDeleteCharacters(2);
+        SLPrintString("\n");
+
+        return true;
     }
 #endif /* kCXBuildDev */

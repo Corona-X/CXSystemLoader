@@ -11,7 +11,7 @@
 #include <SystemLoader/SLBase.h>
 #include <SystemLoader/EFI/SLRuntimeServices.h>
 #include <SystemLoader/EFI/SLBootServices.h>
-#include <Kernel/CoreDriver/ACPI/CDACPI.h>
+#include <Kernel/CoreDriver/ACPI/CorePower.h>
 
 #if !kCXAssemblyCode
 
@@ -31,12 +31,12 @@ typedef struct {
     SLRuntimeServices *runtimeServices;
     SLBootServices *bootServices;
     UIntN numberOfConfigTables;
-    SLConfigTable configTables[];
+    SLConfigTable *configTables;
 } SLSystemTable;
 
 #if kCXBootloaderCode
     OSPrivate SLSystemTable *SLSystemTableGetCurrent(void);
-    OSPrivate CDACPITableRoot *SLSystemTableGetACPIRoot(SLSystemTable *table);
+    OSPrivate CPRootDescriptor *SLSystemTableGetACPIRoot(SLSystemTable *table);
 
     #if kCXBuildDev
         OSPrivate void SLSystemTableDumpConfigTables(SLSystemTable *table);

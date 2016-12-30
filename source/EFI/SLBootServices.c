@@ -118,6 +118,7 @@ SLMemoryMap *SLBootServicesTerminate(void)
     SLBootServicesCheck(kOSNullPointer);
 
     SLMemoryMap *finalMemoryMap = SLBootServicesGetMemoryMap();
+    SLPrintString("%p\n", finalMemoryMap);
     if (!finalMemoryMap) return kOSNullPointer;
 
     SLBootServicesTerminateHandler *handler = gSLBootServicesFirstHandler;

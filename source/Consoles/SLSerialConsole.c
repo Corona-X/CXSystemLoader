@@ -2,6 +2,7 @@
 #include <SystemLoader/SLMemoryAllocator.h>
 #include <SystemLoader/SLConfigFile.h>
 #include <SystemLoader/SLSerial.h>
+#include <Kernel/XKShared.h>
 
 typedef void (*SLConsoleOutput)(OSUTF8Char *string, OSSize size, OSAddress context);
 typedef UInt8 (*SLConsoleInput)(bool wait, OSAddress context);
@@ -44,7 +45,7 @@ void __SLSerialConsoleInitAll(void)
 
         if (port == kSLSerialPortError)
         {
-            SLPrintString("Error Loading Serial Port at '0x%04X'\n", port);
+            XKPrintString("Error Loading Serial Port at '0x%04X'\n", config->dev.serialConsole.ports[i]);
             continue;
         }
 

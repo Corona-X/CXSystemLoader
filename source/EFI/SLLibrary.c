@@ -3,6 +3,8 @@
 #include <SystemLoader/SLFormattedPrint.h>
 #include <SystemLoader/SLMemoryAllocator.h>
 #include <SystemLoader/SLLoader.h>
+#include <SystemLoader/EFI/SLSystemTable.h>
+#include <Kernel/XKMemory.h>
 
 OSAddress SLGetMainImageHandle(void)
 {
@@ -11,16 +13,18 @@ OSAddress SLGetMainImageHandle(void)
 
 SLRuntimeServices *SLRuntimeServicesGetCurrent(void)
 {
-    return gSLLoaderSystemTable->runtimeServices;
+    return SLSystemTableGetCurrent()->runtimeServices;
 }
 
 bool SLDelayProcessor(UIntN time, bool useBootServices)
 {
-    if (useBootServices && gSLBootServicesEnabled) {
+    if (useBootServices && !SLBootServicesHaveTerminated()) {
         SLStatus status = SLBootServicesGetCurrent()->stall(time);
         return !SLStatusIsError(status);
     } else {
         // Try to mimic BS stall() function
+        // This only works before MP has been enabled,
+        // and the timing is very inacurate....
         for (volatile UInt64 i = 0; i < (time * 100); i++);
         return true;
     }
@@ -28,51 +32,54 @@ bool SLDelayProcessor(UIntN time, bool useBootServices)
 
 char SLWaitForKeyPress(void)
 {
-    SLBootServicesCheck(0);
+    if (!SLBootServicesHaveTerminated()) {
+        SLStatus status;
+        SLKeyPress key;
 
-    SLStatus status = gSLLoaderSystemTable->stdin->reset(gSLLoaderSystemTable->stdin, false);
-    if (SLStatusIsError(status)) return 0;
-    status = kSLStatusNotReady;
-    SLKeyPress key;
-    
-    while (status == kSLStatusNotReady)
-        status = gSLLoaderSystemTable->stdin->readKey(gSLLoaderSystemTable->stdin, &key);
-    
-    return key.keycode;
+        do {
+            status = SLSystemTableGetCurrent()->stdin->readKey(gSLLoaderSystemTable->stdin, &key);
+        } while (status == kSLStatusNotReady);
+
+        return key.keycode;
+    } else {
+        // Need USB Keyboard Driver at this Point...
+        return 0;
+    }
 }
 
 #if kCXBuildDev
-    bool SLPromptUser(const char *s, SLSerialPort port)
+    bool SLPromptUser(const char *s)
     {
-        SLPrintString("%s (y/n)? ", s);
+        SLPrintString("%s (yes/no)? ", s);
         UInt8 response = 0;
 
-        if (!gSLBootServicesEnabled) {
-            while (response != 'y' && response != 'n')
-                response = SLSerialReadCharacter(port, true);
-        } else {
-            gSLLoaderSystemTable->stdin->reset(gSLLoaderSystemTable->stdin, false);
-            SLKeyPress key; key.keycode = 0;
-            SLStatus status;
+        for ( ; ; )
+        {
+            bool result = false, again = true;
+            OSSize size;
 
-            while ((key.keycode != 'y' && response != 'y') && (key.keycode != 'n' && response != 'n'))
-            {
-                status = gSLLoaderSystemTable->stdin->readKey(gSLLoaderSystemTable->stdin, &key);
-                response = SLSerialReadCharacter(port, false);
+            OSUTF8Char *string = SLScanString('\r', &size);
+            if (size == 0) continue;
+            SLPrintString("\n");
 
-                if (status != kSLStatusNotReady)
-                    response = key.keycode;
+            if (!XKMemoryCompare(string, "yes", 3)) {
+                result = true;
+                again = false;
+            } else if (!XKMemoryCompare(string, "no", 2)) {
+                result = false;
+                again = false;
             }
 
-            if (key.keycode == 'y')
-                response = 'y';
+            SLFree(string);
 
-            if (key.keycode == 'n')
-                response = 'n';
+            if (again)
+            {
+                SLPrintString("Invalid Response. %s (yes/no)? ", s);
+                continue;
+            }
+
+            return result;
         }
-
-        SLPrintString("%c\n", response);
-        return (response == 'y');
     }
 
     void SLShowDelay(const char *s, UInt64 seconds)
@@ -82,7 +89,7 @@ char SLWaitForKeyPress(void)
         while (seconds)
         {
             SLPrintString("%d...", seconds);
-            SLDelayProcessor(1000000, gSLBootServicesEnabled);
+            SLDelayProcessor(1000000, true);
             SLDeleteCharacters(4);
 
             seconds--;
@@ -113,7 +120,7 @@ char SLWaitForKeyPress(void)
             SLPrintSystemState(&state);
 
             XKProcessorMSR efer = XKProcessorMSRRead(0xC0000080);
-            SLPrintString("efer: 0x%zX\n", efer);
+            SLPrintString("efer: 0x%016zX\n", efer);
             SLPrintString("\n");
         }
 
@@ -128,55 +135,61 @@ char SLWaitForKeyPress(void)
         }
     }
 
-    #define SLPrintRegister(s, r)   SLPrintString(OSStringValue(r) ": 0x%zX\n", s->r)
-    #define SLPrintRegister16(s, r) SLPrintString(OSStringValue(r) ": 0x%hX\n", s->r)
+    #define SLPrintRegister(s, r, l, e)   SLPrintString(OSStringValue(r) e ": 0x%016" l "X", s->r)
 
-    #define SLPrint2Registers(s, r0, r1)            \
-        SLPrintRegister(s, r0);                     \
-        SLPrintRegister(s, r1);
+    #define SLPrint2Registers(s, r0, r1, l, e)      \
+        SLPrintRegister(s, r0, l, e);               \
+        SLPrintString(", ");                        \
+        SLPrintRegister(s, r1, l, e)
 
-    #define SLPrint4Registers(s, r0, r1, r2, r3)    \
-        SLPrint2Registers(s, r0, r1);               \
-        SLPrint2Registers(s, r2, r3);
+    #define SLPrint2RegistersS(s, r0, r1, l, e)     \
+        SLPrint2Registers(s, r0, r1, l, e);         \
+        SLPrintString(", ")
 
-    #define SLPrint2Registers16(s, r0, r1)          \
-        SLPrintRegister16(s, r0);                   \
-        SLPrintRegister16(s, r1);
-
-    #define SLPrint4Registers16(s, r0, r1, r2, r3)  \
-        SLPrint2Registers16(s, r0, r1);             \
-        SLPrint2Registers16(s, r2, r3);
+    #define SLPrint2RegistersE(s, r0, r1, l, e)     \
+        SLPrint2Registers(s, r0, r1, l, e);         \
+        SLPrintString("\n")
 
     void SLPrintBasicState(XKProcessorBasicState *state)
     {
-        SLPrint4Registers(state, rax, rbx, rcx, rdx);
-        SLPrint4Registers(state, r8,  r9,  r10, r11);
-        SLPrint4Registers(state, r12, r13, r14, r15);
-        SLPrint4Registers(state, rsi, rdi, rbp, rsp);
-        SLPrint2Registers(state, rip, rflags);
-        SLPrint4Registers16(state, cs, ds, ss, es);
-        SLPrint2Registers16(state, fs, gs);
+        SLPrint2RegistersS(state, rax, rbx, "z", "");
+        SLPrint2RegistersE(state, rcx, rdx, "z", "");
+        SLPrint2RegistersS(state, r8,  r9,  "z", " ");
+        SLPrint2RegistersE(state, r10, r11, "z", "");
+        SLPrint2RegistersS(state, r12, r13, "z", "");
+        SLPrint2RegistersE(state, r14, r15, "z", "");
+        SLPrint2RegistersS(state, rsi, rdi, "z", "");
+        SLPrint2RegistersE(state, rbp, rsp, "z", "");
+        SLPrint2RegistersS(state, cs,  ds,  "h", " ");
+        SLPrint2RegistersE(state, ss,  es,  "h", " ");
+        SLPrint2RegistersE(state, fs,  gs,  "h", " ");
+        SLPrint2RegistersE(state, rip, rflags, "z", "");
     }
 
     void SLPrintSystemState(XKProcessorSystemState *state)
     {
-        SLPrint4Registers(state, cr0, cr2, cr3, cr4);
-        SLPrintRegister(state, cr8);
+        SLPrint2RegistersS(state, cr0, cr2, "z", "");
+        SLPrint2RegistersE(state, cr3, cr4, "z", "");
+        SLPrintRegister(state, cr8, "z", "");
+        SLPrintString("\n");
 
-        SLPrintString("gdtr: 0x%X (limit = 0x%hX)\n", state->gdtr.base, state->gdtr.limit);
-        SLPrintString("idtr: 0x%X (limit = 0x%hX)\n", state->idtr.base, state->idtr.limit);
-
-        SLPrint2Registers16(state, ldtr, tr);
+        SLPrintString("gdtr: 0x%016zX (limit = 0x%04hX)\n", state->gdtr.base, state->gdtr.limit);
+        SLPrintString("idtr: 0x%016zX (limit = 0x%04hX)\n", state->idtr.base, state->idtr.limit);
+        SLPrint2RegistersE(state, ldtr, tr, "h", "");
     }
 
     void SLPrintDebugState(XKProcessorDebugState *state)
     {
-        SLPrint4Registers(state, dr0, dr1, dr2, dr3);
-        SLPrint2Registers(state, dr6, dr7);
+        SLPrint2RegistersS(state, dr0, dr1, "z", "");
+        SLPrint2RegistersE(state, dr2, dr3, "z", "");
+        SLPrint2RegistersE(state, dr6, dr7, "z", "");
     }
 
     void __SLLibraryInitialize(void)
     {
+        SLSystemTable *systemTable = SLSystemTableGetCurrent();
+        systemTable->stdin->reset(systemTable->stdin, false);
+
         SLMemoryAllocatorInit();
         SLConfigGet();
 
@@ -187,11 +200,13 @@ char SLWaitForKeyPress(void)
 
     void SLUnrecoverableError(void)
     {
+        SLPrintError("Unrecoverable Error.\n");
         OSFault();
     }
 #else /* !kCXBuildDev */
     void SLUnrecoverableError(void)
     {
+        SLPrintError("Unrecoverable Error.\n");
         OSFault();
     }
 #endif /* kCXBuildDev */

@@ -4,8 +4,6 @@
 #include <System/OSByteMacros.h>
 #include <Kernel/XKMemory.h>
 
-#define kSLScanBufferSize 1024
-
 #define kSLSizeError  0xFFFFFFFFFFFFFFFF
 #define kSLUTF32Error 0xFFFFFFFF
 #define kSLUTF16Error 0xFFFF
@@ -182,7 +180,7 @@ OSPrivate OSUnicodePoint SLUTF16ToCodePoint(OSUTF16Char *input, OSCount inCount,
     }
 }
 
-OSSize SLUTF16SizeInUTF8(OSUTF16Char *utf16)
+OSSize SLUTF16LengthInUTF8(OSUTF16Char *utf16)
 {
     OSLength stringLength = XKStringSize16(utf16);
     OSSize size = 0;
@@ -210,7 +208,7 @@ OSSize SLUTF16SizeInUTF8(OSUTF16Char *utf16)
     return size;
 }
 
-OSSize SLUTF8SizeInUTF16(OSUTF8Char *utf8)
+OSSize SLUTF8LengthInUTF16(OSUTF8Char *utf8)
 {
     OSLength stringLength = XKStringSize8(utf8);
     OSSize size = 0;
@@ -218,7 +216,7 @@ OSSize SLUTF8SizeInUTF16(OSUTF8Char *utf8)
     for (OSCount i = 0; i < stringLength; i++)
     {
         UInt8 extraBytes = kSLUTF8ExtraByteCount[utf8[i]];
-        i += (extraBytes - 1);
+        i += extraBytes;
 
         if (extraBytes && (i >= stringLength))
             return kSLSizeError;
@@ -235,7 +233,7 @@ OSSize SLUTF8SizeInUTF16(OSUTF8Char *utf8)
 
 OSUTF8Char *SLUTF16ToUTF8(OSUTF16Char *utf16)
 {
-    OSSize utf8size = SLUTF16SizeInUTF8(utf16);
+    OSSize utf8size = SLUTF16LengthInUTF8(utf16);
     if (utf8size == kSLSizeError) return kOSNullPointer;
 
     OSUTF8Char *result = SLAllocate((utf8size + 1) * sizeof(OSUTF8Char)).address;
@@ -260,7 +258,7 @@ OSUTF8Char *SLUTF16ToUTF8(OSUTF16Char *utf16)
 
 OSUTF16Char *SLUTF8ToUTF16(OSUTF8Char *utf8)
 {
-    OSSize utf16size = SLUTF8SizeInUTF16(utf8);
+    OSSize utf16size = SLUTF8LengthInUTF16(utf8);
     if (utf16size == kSLSizeError) return kOSNullPointer;
 
     OSUTF16Char *result = SLAllocate((utf16size + 1) * sizeof(OSUTF16Char)).address;
@@ -270,7 +268,7 @@ OSUTF16Char *SLUTF8ToUTF16(OSUTF8Char *utf8)
     OSUTF16Char *end = result + utf16size;
     OSCount used;
 
-    while (result != end)
+    while (utf16 != end)
     {
         OSUnicodePoint codepoint = SLUTF8ToCodePoint(utf8, utf8size, &used);
         utf8 += (used + 1);
@@ -339,9 +337,25 @@ void SLDeleteCharacters(OSCount count)
     }
 }
 
+OSInline void SLPrintChars(OSUTF8Char *source, OSCount count)
+{
+    if (!count) return;
+
+    SLConsole *console = gSLFirstConsole;
+
+    while (console)
+    {
+        if (console->output)
+            console->output(source, count, console->context);
+
+        console = console->next;
+    }
+}
+
 UInt8 *SLScanString(UInt8 terminator, OSSize *size)
 {
-    UInt8 string[kSLScanBufferSize];
+    OSBuffer stringBuffer = SLAllocate(4);
+    OSUTF8Char *string = stringBuffer.address;
     OSIndex i = 0;
 
     for ( ; ; )
@@ -356,16 +370,50 @@ UInt8 *SLScanString(UInt8 terminator, OSSize *size)
 
                 if (read != kSLUTF8Error)
                 {
-                    if (read == terminator) {
-                        string[i++] = 0;
+                    SLPrintChars(&read, 1);
 
-                        OSUTF8Char *result = SLAllocate(i).address;
-                        XKMemoryCopy(string, result, i);
-                        return result;
+                    if (stringBuffer.size == i)
+                    {
+                        stringBuffer = SLReallocate(stringBuffer.address, stringBuffer.size * 2);
+                        if (OSBufferIsEmpty(stringBuffer)) return kOSNullPointer;
+                        string = stringBuffer.address;
+                    }
+
+                    if (read == terminator) {
+                        string[i] = 0;
+
+                        if (size) (*size) = i;
+                        return string;
                     } else {
                         string[i++] = read;
                     }
                 }
+
+                __volatile__ int nop;
+                nop = 10;
+                nop *= 10;
+                nop = nop;
+            }
+
+            console = console->next;
+        }
+    }
+}
+
+UInt8 SLWaitForInput(void)
+{
+    for ( ; ; )
+    {
+        SLConsole *console = gSLFirstConsole;
+
+        while (console)
+        {
+            if (console->input)
+            {
+                UInt8 read = console->input(false, console->context);
+
+                if (read != kSLUTF8Error)
+                    return read;
             }
 
             console = console->next;
@@ -394,21 +442,6 @@ void SLSetVideoColor(UInt32 color, bool background)
     }
 
     gSLFirstConsole = firstConsole;
-}
-
-OSInline void SLPrintChars(OSUTF8Char *source, OSCount count)
-{
-    if (!count) return;
-
-    SLConsole *console = gSLFirstConsole;
-
-    while (console)
-    {
-        if (console->output)
-            console->output(source, count, console->context);
-
-        console = console->next;
-    }
 }
 
 OSUTF8Char *SLUIDToString(SLProtocol *uid)
@@ -582,27 +615,34 @@ void SLConsolePrintToStringOutput(OSUTF8Char *newChars, OSLength length, OSUTF8C
     (*string) += length;
 }
 
+SLConsole gSLLengthConsole = {
+    .id = 0,
+    .next = kOSNullPointer,
+};
+
+SLConsole gSLPrintToStringConsole = {
+    .id = 0,
+    .next = kOSNullPointer,
+};
+
 OSUTF8Char *SLPrintToStringFromList(const char *format, OSVAList args)
 {
     OSVAList *copy = kOSNullPointer;
     OSVACopy(copy, args);
-    OSLength length;
+    OSLength length = 0;
 
     SLConsole *firstConsole = gSLFirstConsole;
-    SLConsole lengthConsole;
-    lengthConsole.output = SLConsolePrintToStringCount;
-    lengthConsole.context = &length;
-    gSLFirstConsole = &lengthConsole;
+    gSLLengthConsole.context = &length;
+    gSLLengthConsole.output = SLConsolePrintToStringCount;
+    gSLFirstConsole = &gSLLengthConsole;
     SLPrintStringFromList(format, copy);
-    length++;
 
-    OSUTF8Char *string = SLAllocate(length).address;
+    OSUTF8Char *string = SLAllocate(length + 1).address;
     OSUTF8Char *stringCopy = string;
 
-    SLConsole printConsole;
-    printConsole.output = SLConsolePrintToStringOutput;
-    printConsole.context = &stringCopy;
-    gSLFirstConsole = &printConsole;
+    gSLPrintToStringConsole.context = &stringCopy;
+    gSLPrintToStringConsole.output = SLConsolePrintToStringOutput;
+    gSLFirstConsole = &gSLPrintToStringConsole;
     SLPrintStringFromList(format, args);
     string[length] = 0;
 

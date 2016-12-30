@@ -30,7 +30,20 @@
 
 #if !kCXAssemblyCode
 
-#define SLStatusIsError(s)              ((s >> 63) & 1)
+#if !kCXBuildDev
+    #define SLStatusIsError(s)          ((s >> 63) & 1)
+#else /* kCXBuildDev */
+    #define SLStatusIsError(s)                                  \
+        ({                                                      \
+            if (((s >> 63) & 1))                                \
+                SLPrintString("Status Error in function '%s' "  \
+                    "in file '%s' on line %d."                  \
+                    "(Status = 0x%zX)\n", __func__,             \
+                    __FILE__, __LINE__, s);                     \
+                                                                \
+            ((s >> 63) & 1);                                    \
+        })
+#endif /* kCXBuildDev */
 
 typedef OSUIDIntelData SLProtocol;
 typedef UIntN SLStatus;

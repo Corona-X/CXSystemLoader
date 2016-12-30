@@ -45,6 +45,7 @@ typedef struct {
     OSPrivate bool SLDoesOwnMemory(OSAddress object);
     OSPrivate OSBuffer SLAllocate(OSSize size);
     OSPrivate OSBuffer SLReallocate(OSAddress object, OSSize newSize);
+    OSPrivate void SLFreeBuffer(OSBuffer buffer);
     OSPrivate void SLFree(OSAddress object);
 
     #if kCXBuildDev

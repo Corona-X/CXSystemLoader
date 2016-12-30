@@ -1,7 +1,9 @@
 #include <SystemLoader/EFI/SLFile.h>
 #include <SystemLoader/EFI/SLLoadedImage.h>
 #include <SystemLoader/SLMemoryAllocator.h>
+#include <SystemLoader/SLFormattedPrint.h>
 #include <SystemLoader/SLLibrary.h>
+#include <Kernel/XKMemory.h>
 
 SLFile *SLGetRootDirectoryForImage(OSAddress imageHandle)
 {
@@ -32,23 +34,37 @@ SLFile *SLOpenPath(OSUTF8Char *path, UInt8 mode)
     if (!efiPath) return kOSNullPointer;
 
     SLFile *root = SLGetRootDirectoryForImage(SLGetMainImageHandle());
-    if (!root) return kOSNullPointer;
+    if (!root) goto fail;
 
     SLFile *child = SLOpenChild(root, efiPath, mode);
-    if (!child) return kOSNullPointer;
+    if (!child) goto fail;
 
+    SLFree(efiPath);
     return child;
+
+fail:
+    SLFree(efiPath);
+
+    return kOSNullPointer;
 }
 
 bool SLCloseFile(SLFile *file)
 {
+    SLBootServicesCheck(false);
+
     SLStatus status = file->close(file);
-    return SLStatusIsError(status);
+    bool failed = SLStatusIsError(status);
+
+    return !failed;
 }
 
 OSSize SLFileRead(SLFile *file, OSOffset offset, OSBuffer readBuffer)
 {
-    UInt64 currentOffset, size = readBuffer.size;
+    SLBootServicesCheck(0);
+
+    UInt64 size = readBuffer.size;
+    UInt64 currentOffset;
+
     SLStatus status = file->getOffset(file, &currentOffset);
     if (SLStatusIsError(status)) return false;
 
@@ -57,7 +73,7 @@ OSSize SLFileRead(SLFile *file, OSOffset offset, OSBuffer readBuffer)
         status = file->setOffset(file, offset);
         if (SLStatusIsError(status)) return false;
     }
-    
+
     status = file->read(file, &size, readBuffer.address);
     bool failed = SLStatusIsError(status);
 
@@ -66,63 +82,76 @@ OSSize SLFileRead(SLFile *file, OSOffset offset, OSBuffer readBuffer)
 
 OSBuffer SLFileReadFully(SLFile *file)
 {
+    SLBootServicesCheck(kOSBufferEmpty);
+
     OSUIDIntelData fileInfoUID = kSLFileInfoID;
     OSSize fileInfoSize = sizeof(SLFileInfo);
     SLFileInfo fileInfo;
-    
+
     SLStatus status = file->getInfo(file, &fileInfoUID, &fileInfoSize, &fileInfo);
     if (status == kSLStatusBufferTooSmall) status = kSLStatusSuccess;
     if (SLStatusIsError(status)) return kOSBufferEmpty;
-    
+
     OSBuffer buffer = SLAllocate(fileInfo.size);
-    if (OSBufferIsEmpty(buffer)) return buffer;
+    if (OSBufferIsEmpty(buffer)) return kOSBufferEmpty;
     status = file->read(file, &buffer.size, buffer.address);
 
-    if (SLStatusIsError(status))
+    if (SLStatusIsError(status) || buffer.size < fileInfo.size)
     {
-        buffer.size = fileInfo.size;
-        SLFree(buffer.address);
-        
-        return kOSBufferEmpty;
+        SLFreeBuffer(buffer);
+
+        buffer = kOSBufferEmpty;
     }
-    
+
     return buffer;
 }
 
 bool SLReadPath(OSUTF8Char *path, OSOffset offset, OSBuffer readBuffer)
 {
+    SLBootServicesCheck(false);
+
     SLFile *file = SLOpenPath(path, kSLFileModeRead);
     if (!file) return false;
-    
+
     bool success = SLFileRead(file, offset, readBuffer);
-    SLStatus status = file->close(file);
-    
-    if (SLStatusIsError(status))
-        success = false;
-    
+    if (!SLCloseFile(file)) success = false;
+
     return success;
 }
 
 OSBuffer SLReadPathFully(OSUTF8Char *path)
 {
+    SLBootServicesCheck(kOSBufferEmpty);
+
     SLFile *file = SLOpenPath(path, kSLFileModeRead);
     if (!file) return kOSBufferEmpty;
-    
+
     OSBuffer result = SLFileReadFully(path);
-    SLStatus status = file->close(file);
-    
-    if (SLStatusIsError(status))
+
+    if (!SLCloseFile(file) && !OSBufferIsEmpty(result))
     {
-        if (!OSBufferIsEmpty(result))
-            SLFree(result.address);
-        
+        SLFreeBuffer(result);
+
         result = kOSBufferEmpty;
     }
-    
+
     return result;
 }
 
 OSUTF16Char *SLPathToEFIPath(OSUTF8Char *path)
 {
-    return kOSNullPointer;
+    OSSize copySize = XKStringSize8(path) + 1;
+    OSUTF8Char *copy = SLAllocate(copySize).address;
+    XKMemoryCopy(path, copy, copySize);
+
+    for (OSIndex i = 0; i < (copySize - 1); i++)
+    {
+        if (copy[i] == '/')
+            copy[i] = '\\';
+    }
+
+    OSUTF16Char *efiPath = SLUTF8ToUTF16(copy);
+    SLFree(copy);
+
+    return efiPath;
 }

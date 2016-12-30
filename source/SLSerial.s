@@ -1,41 +1,64 @@
 #include <Kernel/XKAssembly.h>
-
-#define testValue1 0xC7
-#define testValue2 0x83
+#include <SystemLoader/SLSerial.h>
 
 #if kCXArchIA && kCXBuildDev
+
+// About the stack setup for these functions...
+// They don't have any!! (Except 2 of them)
+// That means that if there is an error in any of these routines,
+// it will not be visible in the stack trace, but there routines
+// don't call out anywhere external and they're generally too simple
+// to really cause many errors so it should be alright...
 
 .section kXKCodeSectionName
 .align kXKNaturalAlignment
 
+.data
+
+test_string_1:
+    .asciz "Read 0x%02X\n"
+
+test_string_2:
+    .asciz "Expected 0x%02X\n"
+
+.text
+
 // Arguments:
-//   %cx: port
+//   %dx: scratch register
 //
-// Return Value (ZF):
-//   0: failure
-//   1: success
+// Return Value:
+//   failure: Jump to \fail
+//   success: Continue execution
+//
+// Destroyed Registers:
+//   %al
+.macro SLSerialPortTestValue value, fail
+    movb \value, %al                    // Load test value into accumulator
+    outb %al, %dx                       // Send test value to scratch space
+    inb %dx, %al                        // Read value in scratch space
+    cmpb \value, %al                    // Check if value was saved correctly
+    jne \fail                           // Jump to failure handler if it wasn't
+.endm
+
+// Arguments:
+//   %esi: port base
+//
+// Return Value:
+//   failure: Jump to \fail
+//   success: Continue execution
 //
 // Destroyed Registers:
 //   %al
 //   %dx
 .macro SLSerialPortTest fail
-    movb $testValue1, %al
-    movw %cx, %dx
-    addw $7, %dx
-    outb %al, %dx
-    inb %dx, %al
-    xorb $testValue1, %al
-    jnz \fail
-    movb $testValue2, %al
-    outb %al, %dx
-    inb %dx, %al
-    xorb $testValue2, %al
-    jnz 1f
-    xorb %al, %al
+    leaw 7(%esi), %dx                   // Load address of scratch register (base + 7) to I/O register (%dx)
+    SLSerialPortTestValue $0xC7, \fail  // Test with first value
+    SLSerialPortTestValue $0x83, \fail  // test with second value
 .endm
 
 // Arguments:
-//   %cl: time
+//   \wr: temporary register
+//   \times: number of times to loop
 //
 // Return Value:
 //   ---
@@ -43,94 +66,91 @@
 // Destroyed Registers:
 //   \wr
 .macro SLSerialDelay wr, times
-    //callq SLBootServicesHaveTerminated
-    //movb %al, %dl
-    //callq SLDelayProcessor
-
-    movw \times, \wr
+    movw \times, \wr                    // Move counter to loop counter
 
     99:
-        nop; nop; nop; nop
-        nop; nop; nop; nop
-        nop; nop; nop; nop
-        nop; nop; nop; nop
-        decw \wr
-        jnz 99b
+        decw \wr                        // Decrement loop counter
+        jnz 99b                         // Again if we're not done
+
+    // The reason why this loop should delay enough is that the CPU
+    // *should* be tricked into throwing out its pipeline each time
+    // the jump instruction is executed. I can't say for sure weather
+    // or not this actually occurs as I haven't tested it, but I don't
+    // think the branch prediction works well enough to see through my
+    // tricks. (hopefully?)
 .endm
 
 // Arguments:
-//   %cx: portBase
+//   %di: port base
 //
 // Return Value (%ax):
 //   portBase: success
-//   0xFFFF: failure
+//   kSLSerialPortError: failure
 //
 // Destroyed Registers:
-//   %dx
 //   %al
+//   %dx
+//   %esi
 XKDeclareFunction(SLSerialPortInit):
-    SLSerialPortTest 1f
-    pushw %cx
-    callq XKSymbol(SLSerialPortReset)
-    popw %cx
-    movw %cx, %dx
-    addw $4, %dx
-    movb $0x02, %al
-    outb %al, %dx
-    movw %cx, %dx
-    inb %dx, %al
-    movw %cx, %ax
-    ret
+    movzwl %di, %esi                    // Save port address to %esi
+    SLSerialPortTest 1f                 // Check if serial port exists; return otherwise
+    callq XKSymbol(SLSerialPortReset)   // Reset Port (%di destroyed)
+    leaw 4(%esi), %dx                   // Load modem control register (base + 4) to I/O port register (%dx)
+    movb $0x02, %al                     // Load initial modem control register value
+    outb %al, %dx                       // Send initial modem control register value to modem control port
+    subw $4, %dx                        // Move %dx back to port base
+    inb %dx, %al                        // Clear character buffer
+    movw %dx, %ax                       // Load port intro return value
+    ret                                 // Return port address (success)
 
     1:
-        movw $0xFFFF, %ax
-        ret
+        movw $kSLSerialPortError, %ax   // Load failure return value
+        ret                             // Return error address
 
 // Arguments:
-//   %cx: port
+//   %di: port base
 //
 // Return Value:
 //   ---
 //
 // Destroyed Registers:
 //   %al
-//   %cx
 //   %dx
-//   %r8w
+//   %edi
 XKDeclareFunction(SLSerialPortReset):
-    movb $0x80, %al
-    movw %cx, %dx
-    addw $3, %dx
-    movw %dx, %r8w
-    outb %al, %dx
-    movw %cx, %dx
-    xorb %al, %al
-    outb %al, %dx
-    incw %dx
-    movw %dx, %cx
-    outb %al, %dx
-    movw %r8w, %dx
-    outb %al, %dx
-    movw %cx, %dx
-    outb %al, %dx
-    incw %dx
-    outb %al, %dx
-    addw $2, %dx
-    outb %al, %dx
-    outb %al, %dx
-    addw $2, %dx
-    outb %al, %dx
-    decw %dx
-    inb %dx, %al
-    andb $0xF0, %al
-    outb %al, %dx
-    ret
+    movzwl %di, %edi                    // Save port address to %edi
+    leaw 3(%edi), %dx                   // Load line control register (base + 3) to I/O port register (%dx)
+    movb $0x80, %al                     // Load value to expose divisor registers into accumulator
+    outb %al, %dx                       // Expose divisor registers
+    leaw (%edi), %dx                    // Load port base into I/O register
+    movb $1, %al                        // Load LSB of divisor into accumulator
+    outb %al, %dx                       // Reset LSB of divisor to 1
+    xorb %al, %al                       // Clear accumulator
+    incw %dx                            // Increment I/O register to point to MSB of divisor
+    outb %al, %dx                       // Reset MSB of divisor to 0
+    leaw 3(%edi), %dx                   // Load line control register to I/O port register
+    outb %al, %dx                       // Reset line control to 0
+    incw %dx                            // Increment I/O register to point to modem control register
+    outb %al, %dx                       // Reset modem control register to 0
+    incw %dx                            // Increment I/O register to point to line status register
+    movb $0x60, %al                     // Load default line status into the accumulator
+    outb %al, %dx                       // Reset line status to 0x60
+    incw %dx                            // Increment I/O register to point to modem status register
+    inb %dx, %al                        // Load current value of modem status register
+    andb $0xF0, %al                     // Unset low 4 bits of modem status register (in accumulator)
+    outb %al, %dx                       // Reset modem status register
+    xorb %al, %al                       // Clear accumulator
+    leaw 1(%edi), %dx                   // Load interrupt enable register (base + 1) into I/O port register
+    outb %al, %dx                       // Reset interrupt enable register to 0 (All interrupts disabled)
+    incw %dx                            // Increment I/O register to point to FIFO control register
+    outb %al, %dx                       // Reset FIFO control register to 0 (FIFO disabled)
+    ret                                 // All done; return to parent
 
 // Arguments:
-//   %cx: port
-//   %dl: word size
-//   %r8b: parity
-//   %r9b: stop bits
+//   %di: port
+//   %sil: word length
+//   %cl: parity
+//   %dl: stop bits
 //
 // Return Value:
 //   ---
@@ -138,76 +158,71 @@ XKDeclareFunction(SLSerialPortReset):
 // Destroyed Registers:
 //   %al
 //   %dx
-//   %r8b
-//   %r9b
 XKDeclareFunction(SLSerialPortSetupLineControl):
-    movb %dl, %al
-    shlb $3, %r8b
-    orb %r8b, %al
-    shlb $1, %r9b
-    orb %r9b, %al
-    movw %cx, %dx
-    addw $3, %dx
-    outb %al, %dx
-    ret
+    movb %cl, %al                       // Store parity bits in accumulator
+    shlb $3, %al                        // Move parity bits to correct position in accumulator
+    shlb $1, %dl                        // Move stop bit to correct position
+    orb %dl, %al                        // Or stop bit into accumulator
+    orb %sil, %al                       // Or word length bits into accumulator
+    leaw 3(%edi), %dx                   // Load line control register (base + 3) into I/O register (%dx)
+    outb %al, %dx                       // Send new line control value to line control register
+    ret                                 // All done; return to parent
 
 // Arguments:
-//   %cx: port
-//   %dx: divisor
+//   %di: port
+//   %si: divisor
 //
 // Return Value:
 //   ---
 //
 // Destroyed Registers:
-//   %al
+//   %ax
+//   %cl
 //   %dx
-//   %r8w
-//   %r9b
 XKDeclareFunction(SLSerialPortSetBaudDivisor):
-    movw %dx, %r8w
-    movw %cx, %dx
-    addw $3, %dx
-    inb %dx, %al
-    movb %al, %r9b
-    orb $0x80, %al
-    outb %al, %dx
-    movw %cx, %dx
-    movw %r8w, %ax
-    outb %al, %dx
-    shrw $8, %ax
-    incw %dx
-    outb %al, %dx
-    addw $2, %dx
-    movb %r9b, %al
-    outb %al, %dx
-    ret
+    leaw 3(%edi), %dx                   // Load line control register (base + 3) into I/O register (%dx)
+    inb %dx, %al                        // Load current line control register into accumulator
+    movb %al, %cl                       // Store origin line control value
+    orb $0x80, %al                      // Enable bit which exposes divisor in accumulator
+    outb %al, %dx                       // Output divisor access bit into line control register
+    leaw (%edi), %dx                    // Load divisor LSB (base + 0) into I/O register
+    movb %sil, %al                      // Load divisor LSB into accumulator
+    outb %al, %dx                       // Output divisor LSB
+    incw %dx                            // Increment I/O register to point to divisor MSB
+    movw %si, %ax                       // Move full divisor to accumulator
+    movb %ah, %al                       // Move MSB of divisor to the low 8 bits of the accumulator
+    outb %al, %dx                       // Output divisor MSB
+    leaw 3(%edi), %dx                   // Load line control register into I/O register
+    movb %cl, %al                       // Load saved line control value back into accumulator
+    outb %al, %dx                       // Output saved line control value
+    ret                                 // All done; return to parent
 
 // Arguments:
-//   %cx: port
-//   %edx: rate
+//   %di: port
+//   %si: rate
 //
 // Return Value:
 //   ---
 //
 // Destroyed Registers:
-//   %eax
-//   %edx
-//   %r8d
+//   %ax
+//   %cl
+//   %dx
+//   %si
 XKDeclareFunction(SLSerialPortSetBaudRate):
-    testl %edx, %edx
-    jz 1f
+    testw %si, %si                      // Check to see if the rate is 0
+    jz 1f                               // If it is, get out and avoid a division error
 
-    movl $0x1C200, %eax
-    movl %edx, %r8d
-    xorl %edx, %edx
-    divl %r8d
-    test %edx, %edx
-    jnz 1f
-    movl %eax, %edx
-    callq XKSymbol(SLSerialPortSetBaudDivisor)
+    movw $0xC200, %ax                   // Load clock rate LSB into the accumulator
+    movw $0x1, %dx                      // Load clock rate MSB into extended accumulator
+    divw %si                            // Divide by provided rate
+    test %dx, %dx                       // Test for a remainder
+    jnz 1f                              // Return if there was a remainder
+    movw %ax, %si                       // Load divisor into second argument register
+    callq XKSymbol(SLSerialPortSetBaudDivisor)  // Set the divisor
 
     1:
-        ret
+        ret                             // We either did it or an error occurred; return in either case
 
 // Arguments:
 //   %cx: port
@@ -261,7 +276,7 @@ XKDeclareFunction(SLSerialWriteCharacter):
 //   %dl: block
 //
 // Return Value (%al):
-//   0xFF: failure
+//   0x00: failure
 //   other: success
 //
 // Destroyed Registers:
@@ -292,7 +307,8 @@ XKDeclareFunction(SLSerialReadCharacter):
         ret
 
     3:
-        movb $0xFF, %al
+        movb $0x0, %al
+        ret
 
 // Arguments:
 //   %cx: port

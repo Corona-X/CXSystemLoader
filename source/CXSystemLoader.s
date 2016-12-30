@@ -57,8 +57,8 @@ XKDeclareFunction(_SLEntry):
         callq *%rax
     #endif /* kCXBuildDev */
 
-    XKLoadSymbol(gSLLoaderImageHandle, %rcx)
-    XKLoadSymbol(gSLLoaderSystemTable, %rdx)
+    XKLoadSymbol(gSLLoaderImageHandle, %rdi)
+    XKLoadSymbol(gSLLoaderSystemTable, %rsi)
 
     leaq XKSymbol(CXSystemLoaderMain)(%rip), %rax
     callq *%rax

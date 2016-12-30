@@ -165,8 +165,17 @@ void SLTestStringLengths(void)
 void SLRunTests(void)
 {
     //SLFree(SLAllocate(8192));
-    SLMemoryMap *map = SLBootServicesTerminate();
-    SLPrintString("!!!Terminated Boot Services [final memory map @ %p]!!!\n", map);
+    // Plz don't terminate yet....
+    /*SLMemoryMap *map = SLBootServicesTerminate();
+
+    if (map) {
+        SLPrintString("!!!Terminated Boot Services [final memory map @ %p]!!!\n", map);
+    } else {
+        SLPrintString("!!!Error Terminating Boot Services!!!\n");
+        SLPrintString("Hanging here...\n");
+
+        for ( ; ; ) ;
+    }*/
 
     SLPrintString("Running Formatted Print Test...\n\n");
     SLTestFormattedPrint();

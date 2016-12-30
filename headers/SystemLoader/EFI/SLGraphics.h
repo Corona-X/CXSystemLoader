@@ -69,7 +69,7 @@ typedef struct {
 } SLGraphicsPoint;
 
 #if kCXBootloaderCode
-    OSPrivate SLGraphicsOutput **SLGraphicsOutputGetAll(void);
+    OSPrivate SLGraphicsOutput **SLGraphicsOutputGetAll(OSCount *count);
     OSPrivate SLGraphicsModeInfo *SLGraphicsOutputGetMode(SLGraphicsOutput *graphics, UInt32 modeNumber);
     OSPrivate SLGraphicsMode *SLGraphicsOutputGetCurrentMode(SLGraphicsOutput *graphics);
 
@@ -80,7 +80,7 @@ typedef struct {
     OSPrivate void SLGraphicsContextWritePrerenderedCharacter(SLGraphicsContext *context, UInt8 character, SLGraphicsPoint location, SLBitmapFont *font, UInt32 color, UInt32 backgroundColor);
 
     #if kCXBuildDev
-        OSPrivate void SLGraphicsOutputDumpInfo(void);
+        OSPrivate bool SLGraphicsOutputDumpInfo(void);
     #endif /* kCXBuildDev */
 #endif /* kCXBootloaderCode */
 

@@ -34,6 +34,7 @@ typedef struct __SLConsole {
     OSPrivate void SLMoveBackward(OSCount count);
     OSPrivate void SLDeleteCharacters(OSCount count);
     OSPrivate UInt8 *SLScanString(UInt8 terminator, OSSize *size);
+    OSPrivate UInt8 SLWaitForInput(void);
 
     OSPrivate OSUTF8Char *SLUIDToString(SLProtocol *uid);
     OSPrivate OSUTF8Char *SLNumberToString(SInt64 number, bool isSigned, UInt8 base, UInt8 padding, UInt8 hexStart, OSLength *size);
@@ -46,8 +47,8 @@ typedef struct __SLConsole {
 
     OSPrivate OSUTF8Char *SLUTF16ToUTF8(OSUTF16Char *utf16);
     OSPrivate OSUTF16Char *SLUTF8ToUTF16(OSUTF8Char *utf8);
-    OSPrivate OSSize SLUTF16SizeInUTF8(OSUTF16Char *utf16);
-    OSPrivate OSSize SLUTF8SizeInUTF16(OSUTF8Char *utf8);
+    OSPrivate OSSize SLUTF16LengthInUTF8(OSUTF16Char *utf16);
+    OSPrivate OSSize SLUTF8LengthInUTF16(OSUTF8Char *utf8);
 
     OSPrivate bool SLConsoleIsVideoConsole(SLConsole *console);
     OSPrivate SInt8 SLRegisterConsole(SLConsole *console);

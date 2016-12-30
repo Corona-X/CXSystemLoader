@@ -10,13 +10,11 @@
 #include <Corona-X.h>
 #include <SystemLoader/SLBase.h>
 #include <SystemLoader/EFI/SLSystemTable.h>
-#include <SystemLoader/SLSerial.h>
 #include <Kernel/XKProcessorState.h>
 
 #if !kCXAssemblyCode
 
 #if kCXBootloaderCode
-
     #define SLBootServicesCheck(e)                                                                      \
         do {                                                                                            \
             if (SLBootServicesHaveTerminated())                                                         \
@@ -46,7 +44,7 @@
     OSExport bool gSLBootServicesEnabled;
 
     #if kCXBuildDev
-        OSPrivate bool SLPromptUser(const char *s, SLSerialPort port);
+        OSPrivate bool SLPromptUser(const char *s);
         OSPrivate void SLShowDelay(const char *s, UInt64 seconds);
 
         OSPrivate void SLDumpProcessorState(bool standard, bool system, bool debug);
@@ -64,8 +62,6 @@
         #define SLPrintString(s, ...) do {} while(0)
     #endif /* kCXBuildDev */
 #endif /* kCXBootloaderCode */
-
-extern void SLPS(const char *s, ...);
 
 #endif /* !kCXAssemblyCode */
 
