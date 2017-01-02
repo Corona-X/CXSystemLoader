@@ -2,7 +2,7 @@
 #include <SystemLoader/SLMemoryAllocator.h>
 #include <SystemLoader/SLLibrary.h>
 #include <System/OSByteMacros.h>
-#include <Kernel/XKMemory.h>
+#include <Kernel/XKShared.h>
 
 #define kSLSizeError  0xFFFFFFFFFFFFFFFF
 #define kSLUTF32Error 0xFFFFFFFF
@@ -354,7 +354,7 @@ OSInline void SLPrintChars(OSUTF8Char *source, OSCount count)
 
 UInt8 *SLScanString(UInt8 terminator, OSSize *size)
 {
-    OSBuffer stringBuffer = SLAllocate(4);
+    OSBuffer stringBuffer = SLAllocate(8);
     OSUTF8Char *string = stringBuffer.address;
     OSIndex i = 0;
 
@@ -367,9 +367,16 @@ UInt8 *SLScanString(UInt8 terminator, OSSize *size)
             if (console->input)
             {
                 UInt8 read = console->input(false, console->context);
+                if (read == '\r') read = '\n';
 
-                if (read != kSLUTF8Error)
-                {
+                // Backspace or delete
+                if (read == '\b' || read == 0x7F) {
+                    if (i)
+                    {
+                        SLDeleteCharacters(1);
+                        string[i--] = 0;
+                    }
+                } else if (read != kSLUTF8Error) {
                     SLPrintChars(&read, 1);
 
                     if (stringBuffer.size == i)
@@ -389,10 +396,8 @@ UInt8 *SLScanString(UInt8 terminator, OSSize *size)
                     }
                 }
 
-                __volatile__ int nop;
-                nop = 10;
-                nop *= 10;
-                nop = nop;
+                // Wait about half a millisecond in between polling
+                SLDelayProcessor(500, !SLBootServicesHaveTerminated());
             }
 
             console = console->next;

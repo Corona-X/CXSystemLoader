@@ -30,26 +30,24 @@ void SLPromptTests(void)
     }
 }
 
-OSNoReturn void SLShutdownVirtualMachine(void)
-{
-    // Let the user read on-screen output first
-    if (!SLBootServicesHaveTerminated())
-        SLWaitForKeyPress();
+bool isProbablyVM = false;
 
-    // QEMU lets us just do this
-    XKWriteIOByte(0xF4, 0x00);
-    OSEndCode();
+OSNoReturn void SLShutdownMachine(void)
+{
+    if (isProbablyVM) {
+        // QEMU lets us just do this
+        XKWriteIOByte(0xF4, 0x00);
+        OSEndCode();
+    } else {
+        // This only gets called before BootServices exit for now...
+        SLLeave(kSLStatusLoadError);
+    }
 }
 
 SLStatus CXSystemLoaderMain(OSAddress imageHandle, SLSystemTable *systemTable)
 {
-    SLPrintError("%s(%p, %p) called\n", __func__, imageHandle, systemTable);
-    SLPrintError("Note: Should be %p, %p", SLSystemTableGetCurrent(), SLGetMainImageHandle());
-
     #if kCXBuildDev
-        //SLSetVideoColor(0x8202FF, false);
         SLPrintString(kSLLoaderWelcomeString);
-        //SLSetVideoColor(0x00FFFFFF, false);
 
         SLGraphicsOutputDumpInfo();
         SLDumpConsoles();
@@ -67,7 +65,8 @@ SLStatus CXSystemLoaderMain(OSAddress imageHandle, SLSystemTable *systemTable)
         if (!rootDescriptor)
         {
             SLPrintString("Error: No valid ACPI Root Table found! (Does thie machine have the proper version of ACPI?)\n");
-            SLShutdownVirtualMachine();
+            SLWaitForKeyPress();
+            SLShutdownMachine();
         }
 
         UInt8 manufacturer[7];
@@ -82,12 +81,14 @@ SLStatus CXSystemLoaderMain(OSAddress imageHandle, SLSystemTable *systemTable)
         if (!rootTable)
         {
             SLPrintString("Error: Could not detect valid ACPI Root Table from the Root Descriptor!\n");
-            SLShutdownVirtualMachine();
+            SLWaitForKeyPress();
+            SLShutdownMachine();
         }
 
         SLPrintString("Note: Discovered valid ACPI Root Table at %p\n", rootTable);
         SLPrintString("Note: Root Table has %zu entries\n", CPRootTableGetEntryCount(rootTable));
     #endif /* kCXBuildDev */
 
-    SLShutdownVirtualMachine();
+    SLWaitForKeyPress();
+    SLShutdownMachine();
 }

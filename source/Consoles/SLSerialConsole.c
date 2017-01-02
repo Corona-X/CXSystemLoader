@@ -1,35 +1,43 @@
 #include <SystemLoader/SLFormattedPrint.h>
 #include <SystemLoader/SLMemoryAllocator.h>
 #include <SystemLoader/SLConfigFile.h>
-#include <SystemLoader/SLSerial.h>
+#include <Kernel/XKSerial.h>
 #include <Kernel/XKShared.h>
 
-typedef void (*SLConsoleOutput)(OSUTF8Char *string, OSSize size, OSAddress context);
-typedef UInt8 (*SLConsoleInput)(bool wait, OSAddress context);
-typedef void (*SLConsoleMoveBackward)(OSCount spaces, OSAddress context);
-typedef void (*SLConsoleDeleteCharacters)(OSCount characters, OSAddress context);
-
-void SLSerialConsoleOutput(OSUTF8Char *string, OSSize size, SLSerialPort port)
+void SLSerialConsoleOutput(OSUTF8Char *string, OSSize size, XKSerialPort port)
 {
     for (OSIndex i = 0; i < size; i++)
-        SLSerialWriteCharacter(port, string[i], true);
+    {
+        if (string[i] == '\n')
+            XKSerialWriteCharacter(port, '\r', true);
+
+        XKSerialWriteCharacter(port, string[i], true);
+    }
 }
 
-UInt8 SLSerialConsoleInput(bool wait, SLSerialPort port)
+UInt8 SLSerialConsoleInput(bool wait, XKSerialPort port)
 {
-    return SLSerialReadCharacter(port, wait);
+    UInt8 character = XKSerialReadCharacter(port, wait);
+
+    if (character == kXKSerialReadError)
+    {
+        SLPrintString("Warning: Detected serial data transmission error!\n");
+        character = 0;
+    }
+
+    return character;
 }
 
-void SLSerialConsoleMoveBackward(OSCount spaces, SLSerialPort port)
+void SLSerialConsoleMoveBackward(OSCount spaces, XKSerialPort port)
 {
     for (OSCount i = 0; i < spaces; i++)
-        SLSerialWriteCharacter(port, '\b', true);
+        XKSerialWriteCharacter(port, '\b', true);
 }
 
-void SLSerialConsoleDeleteCharacters(OSCount spaces, SLSerialPort port)
+void SLSerialConsoleDeleteCharacters(OSCount spaces, XKSerialPort port)
 {
     for (OSCount i = 0; i < spaces; i++)
-        SLSerialWriteString(port, (UInt8 *)"\b \b");
+        XKSerialWriteString(port, (UInt8 *)"\b \b");
 }
 
 void __SLSerialConsoleInitAll(void)
@@ -41,16 +49,16 @@ void __SLSerialConsoleInitAll(void)
 
     for (OSIndex i = 0; i < config->dev.serialConsole.portCount; i++)
     {
-        SLSerialPort port = SLSerialPortInit(config->dev.serialConsole.ports[i]);
+        XKSerialPort port = XKSerialPortInit(config->dev.serialConsole.ports[i]);
 
-        if (port == kSLSerialPortError)
+        if (port == kXKSerialPortError)
         {
             XKPrintString("Error Loading Serial Port at '0x%04X'\n", config->dev.serialConsole.ports[i]);
             continue;
         }
 
-        SLSerialPortSetupLineControl(port, config->dev.serialConsole.worldLength, config->dev.serialConsole.parityType, config->dev.serialConsole.stopBits);
-        SLSerialPortSetBaudRate(port, config->dev.serialConsole.baudRate);
+        XKSerialPortSetupLineControl(port, config->dev.serialConsole.worldLength, config->dev.serialConsole.parityType, config->dev.serialConsole.stopBits);
+        XKSerialPortSetBaudRate(port, config->dev.serialConsole.baudRate);
 
         SLConsole *console = SLAllocate(sizeof(SLConsole)).address;
 

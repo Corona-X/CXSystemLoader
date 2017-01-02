@@ -55,8 +55,6 @@ typedef struct __SLConsole {
     OSExport SLConsole *gSLFirstConsole;
 #endif /* kCXBuildDev */
 
-extern void SLPS(const char *s, ...);
-
 #endif /* !kCXAssemblyCode */
 
 #endif /* !defined(__SYSTEMLOADER_SLFORMATTEDPRINT__) */

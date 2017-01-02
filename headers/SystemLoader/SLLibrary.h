@@ -28,7 +28,7 @@
     OSPrivate OSAddress SLGetMainImageHandle(void);
     OSPrivate OSNoReturn void SLUnrecoverableError(void);
     OSPrivate bool SLDelayProcessor(UIntN time, bool useBootServices);
-    OSPrivate char SLWaitForKeyPress(void);
+    OSPrivate UInt8 SLWaitForKeyPress(void);
 
     #if kCXTargetOSApple
         #define SLPrintError SLPrintString
@@ -52,6 +52,7 @@
         OSPrivate void SLPrintSystemState(XKProcessorSystemState *state);
         OSPrivate void SLPrintDebugState(XKProcessorDebugState *state);
 
+        OSPrivate void __SLInputConsoleInitAllEFI(void);
         OSPrivate void __SLSerialConsoleInitAll(void);
         OSPrivate void __SLVideoConsoleInitAll(void);
         OSPrivate void __SLBitmapFontInitialize(void);

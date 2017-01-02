@@ -2,6 +2,7 @@
 #include <SystemLoader/SLMemoryAllocator.h>
 #include <SystemLoader/SLLoader.h>
 #include <SystemLoader/EFI/SLFile.h>
+#include <Kernel/XKSerial.h>
 #include <Kernel/XKMemory.h>
 
 SLConfigFile *gSLCurrentConfig = kOSNullPointer;;
@@ -20,13 +21,13 @@ SLConfigFile *SLConfigLoad(OSUTF8Char *path)
         gSLCurrentConfig->dev.videoConsole.foregroundColor = 0xFFFFFF;
         gSLCurrentConfig->dev.videoConsole.enabled = true;
 
-        gSLCurrentConfig->dev.serialConsole.ports = SLAllocate(sizeof(SLSerialPort)).address;
+        gSLCurrentConfig->dev.serialConsole.ports = SLAllocate(sizeof(XKSerialPort)).address;
         gSLCurrentConfig->dev.serialConsole.ports[0] = 0x03F8;
         gSLCurrentConfig->dev.serialConsole.portCount = 1;
         gSLCurrentConfig->dev.serialConsole.baudRate = 57600;
-        gSLCurrentConfig->dev.serialConsole.worldLength = kSLSerialWordLength8Bits;
-        gSLCurrentConfig->dev.serialConsole.parityType = kSLSerialNoParity;
-        gSLCurrentConfig->dev.serialConsole.stopBits = kSLSerial1StopBit;
+        gSLCurrentConfig->dev.serialConsole.worldLength = kXKSerialWordLength8Bits;
+        gSLCurrentConfig->dev.serialConsole.parityType = kXKSerialNoParity;
+        gSLCurrentConfig->dev.serialConsole.stopBits = kXKSerial1StopBit;
         gSLCurrentConfig->dev.serialConsole.enabled = true;
 
         gSLCurrentConfig->dev.memoryConsole.size = (1 << 18);         // 258 KiB

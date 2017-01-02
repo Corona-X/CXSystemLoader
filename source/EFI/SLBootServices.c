@@ -5,7 +5,7 @@
 #include <Kernel/XKMemory.h>
 
 typedef struct __SLBootServicesTerminateHandler {
-    void (*function)(OSAddress context);
+    void (*function)(SLMemoryMap *finalMap, OSAddress context);
     OSAddress context;
     struct __SLBootServicesTerminateHandler *next;
 } SLBootServicesTerminateHandler;
@@ -22,7 +22,7 @@ bool SLBootServicesHaveTerminated(void)
     return !gSLBootServicesEnabled;
 }
 
-void SLBootServicesRegisterTerminationFunction(void (*function)(OSAddress context), OSAddress context)
+void SLBootServicesRegisterTerminationFunction(void (*function)(SLMemoryMap *finalMap, OSAddress context), OSAddress context)
 {
     SLBootServicesCheck((void)(0));
 
@@ -126,7 +126,7 @@ SLMemoryMap *SLBootServicesTerminate(void)
 
     while (handler)
     {
-        handler->function(handler->context);
+        handler->function(finalMemoryMap, handler->context);
 
         SLBootServicesTerminateHandler *oldHandler = handler;
         handler = handler->next;

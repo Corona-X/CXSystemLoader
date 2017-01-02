@@ -30,19 +30,14 @@ bool SLDelayProcessor(UIntN time, bool useBootServices)
     }
 }
 
-char SLWaitForKeyPress(void)
+extern UInt8 SLEFIInputConsoleRead(bool wait);
+
+UInt8 SLWaitForKeyPress(void)
 {
     if (!SLBootServicesHaveTerminated()) {
-        SLStatus status;
-        SLKeyPress key;
-
-        do {
-            status = SLSystemTableGetCurrent()->stdin->readKey(gSLLoaderSystemTable->stdin, &key);
-        } while (status == kSLStatusNotReady);
-
-        return key.keycode;
+        return SLEFIInputConsoleRead(true);
     } else {
-        // Need USB Keyboard Driver at this Point...
+        // Need USB Keyboard Driver at this point...
         return 0;
     }
 }
@@ -58,14 +53,13 @@ char SLWaitForKeyPress(void)
             bool result = false, again = true;
             OSSize size;
 
-            OSUTF8Char *string = SLScanString('\r', &size);
-            if (size == 0) continue;
-            SLPrintString("\n");
+            OSUTF8Char *string = SLScanString('\n', &size);
+            if (!string) continue;
 
-            if (!XKMemoryCompare(string, "yes", 3)) {
+            if ((size == 3) && !XKMemoryCompare(string, "yes", 3)) {
                 result = true;
                 again = false;
-            } else if (!XKMemoryCompare(string, "no", 2)) {
+            } else if ((size == 2) && !XKMemoryCompare(string, "no", 2)) {
                 result = false;
                 again = false;
             }
@@ -187,12 +181,10 @@ char SLWaitForKeyPress(void)
 
     void __SLLibraryInitialize(void)
     {
-        SLSystemTable *systemTable = SLSystemTableGetCurrent();
-        systemTable->stdin->reset(systemTable->stdin, false);
-
         SLMemoryAllocatorInit();
         SLConfigGet();
 
+        __SLInputConsoleInitAllEFI();
         __SLSerialConsoleInitAll();
         __SLBitmapFontInitialize();
         __SLVideoConsoleInitAll();

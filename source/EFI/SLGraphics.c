@@ -174,8 +174,7 @@ void SLGraphicsContextWritePrerenderedCharacter(SLGraphicsContext *context, UInt
             return false;
         }
 
-        SLPrintString("Detected %zu connected screens.\n", count);
-        SLPrintString("Screen info:\n");
+        SLPrintString("Detected %zu connected screens:\n", count);
 
         for (OSCount i = 0; i < count; i++)
         {

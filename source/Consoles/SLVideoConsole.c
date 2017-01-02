@@ -3,7 +3,7 @@
 #include <SystemLoader/SLConfigFile.h>
 #include <SystemLoader/EFI/SLGraphics.h>
 #include <System/OSByteMacros.h>
-#include <Kernel/XKMemory.h>
+#include <Kernel/XKShared.h>
 
 #if kCXDebug
 
@@ -150,11 +150,6 @@ void SLVideoConsoleOutput(OSUTF8Char *string, OSSize size, SLVideoConsole *conso
         SLVideoConsoleOutputCharacter(string[i], console);
 }
 
-UInt8 SLVideoConsoleInput(bool wait, SLVideoConsole *console)
-{
-    return 0;
-}
-
 void SLVideoConsoleMoveBackward(OSCount spaces, SLVideoConsole *console)
 {
     UInt8 *backspaces = SLAllocate(spaces).address;
@@ -179,6 +174,49 @@ bool SLConsoleIsVideoConsole(SLConsole *console)
 {
     return (console->output == (SLConsoleOutput)SLVideoConsoleOutput);
 }
+
+/*
+// Identity Maps the first GiB of memory
+// This is done in the first PML4 entry
+// Page size is assumed to be 4KiB
+// No memory protection is setup,
+// all pages are made user pages with no protection
+//
+// Note: because memory pages must
+bool SLIdentityPageFirst1G(OSAddress pml4)
+{
+    return false;
+}
+
+// This function marks a framebuffer's memory as
+// write combining. It sets up identity paging on
+// the first GiB of memory if necessary and overwrites
+// PAT 3 to be a write combining memory attribute
+void SLVideoConsoleFixFBPAT(OSBuffer framebuffer)
+{
+    // Setup PAT 3 as write combining
+    XKProcessorMSR pat = XKProcessorMSRRead(0x277);
+    pat |= (((UInt64)1) << 24);
+    XKProcessorMSRWrite(0x277, pat);
+
+    // Get control registers
+    XKProcessorSystemState state;
+    XKProcessorGetSystemState(&state);
+
+    // There are 512 512GB entries in the PML4 table
+    // We only need to fill the first one
+    OSAddress pml4 = state.cr3 >> 12;
+    bool mapped = SLIdentityPageFirst1G(pml4);
+
+    if (!mapped)
+    {
+        XKPrintString("Warning: Could not identity map first GiB of memory!\n");
+        return;
+    }
+
+    // Recurse into the paging structure and mark the framebuffer as PAL 3 memory
+    // (set bits 3 and 4 of the paging structure entries for the framebuffer)
+}*/
 
 void __SLVideoConsoleInitAll(void)
 {
@@ -207,6 +245,7 @@ void __SLVideoConsoleInitAll(void)
         SLGraphicsContext *context = SLGraphicsOutputGetContextWithMaxSize(screen, config->dev.videoConsole.maxScreenHeight, config->dev.videoConsole.maxScreenWidth);
         XKMemorySetValue(context->framebuffer, context->framebufferSize, 0x00);
         SLVideoConsole *console = SLAllocate(sizeof(SLVideoConsole)).address;
+        //SLVideoConsoleFixFBPAT(OSBufferMake(context->framebuffer, context->framebufferSize));
 
         console->selectedFont = gSLBitmapFont8x16;
         console->context = context;
@@ -233,7 +272,7 @@ void __SLVideoConsoleInitAll(void)
         console->rootConsole.id = 0xFF;
         console->rootConsole.context = console;
         console->rootConsole.output = SLVideoConsoleOutput;
-        console->rootConsole.input = SLVideoConsoleInput;
+        console->rootConsole.input = kOSNullPointer;
         console->baseOffsetY =       (context->height % console->selectedFont->height) / 2;
         console->baseOffsetX =       (context->width  % console->selectedFont->width)  / 2;
         console->rootConsole.deleteCharacters = SLVideoConsoleDeleteCharacters;

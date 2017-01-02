@@ -23,6 +23,5 @@
 #include <SystemLoader/SLLibrary.h>
 #include <SystemLoader/SLLoader.h>
 #include <SystemLoader/SLMemoryAllocator.h>
-#include <SystemLoader/SLSerial.h>
 
 #endif /* !defined(__SYSTEM__) */

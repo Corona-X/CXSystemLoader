@@ -9,7 +9,7 @@
 
 #include <Corona-X.h>
 #include <SystemLoader/SLBase.h>
-#include <SystemLoader/SLSerial.h>
+#include <Kernel/XKSerial.h>
 
 #if !kCXAssemblyCode
 
@@ -29,7 +29,7 @@ typedef struct {
         bool enabled;
     } videoConsole;
     struct {
-        SLSerialPort *ports;
+        XKSerialPort *ports;
         UInt8 portCount;
 
         UInt16 baudRate;

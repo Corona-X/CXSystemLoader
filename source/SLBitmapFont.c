@@ -433,6 +433,7 @@ void __SLBitmapFontInitialize(void)
     gSLBitmapFont8x16 = &gSLBitmapFont8x16Raw;
     gSLBitmapFont8x16->packedData = __apple_xnu_font;
 
-    SLUnpackFont(gSLBitmapFont8x16);
+    // Pre-rendering is no longer used
+    //SLUnpackFont(gSLBitmapFont8x16);
 }
 #endif /* kCXDebug */

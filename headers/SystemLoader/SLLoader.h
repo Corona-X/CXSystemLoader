@@ -12,7 +12,7 @@
 #include <SystemLoader/EFI/SLSystemTable.h>
 
 #define kSLLoaderVersionString   "A.1"
-#define kSLLoaderBuildString     "003A"
+#define kSLLoaderBuildString     "003F"
 
 #define kSLLoaderWelcomeString   "Corona-X System Loader Version " kSLLoaderVersionString " [Build " kSLLoaderBuildString "]\r\n"
 #define kSLLoaderDataDirectory   "/EFI/corona"
