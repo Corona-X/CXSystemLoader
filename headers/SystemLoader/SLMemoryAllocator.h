@@ -50,7 +50,13 @@ typedef struct {
 
     #if kCXBuildDev
         OSPrivate SLMemoryPool *SLMemoryAllocatorGetMainPool(void);
-        OSPrivate SLHeap *SLMemoryAllocatorGetRealHeap(void);
+        OSPrivate SLHeap *SLMemoryAllocatorGetHeapInfo(void);
+
+        OSPrivate OSCount SLMemoryAllocatorGetAllocCount(void);
+        OSPrivate OSCount SLMemoryAllocatorGetFreeCount(void);
+
+        OSPrivate void SLMemoryAllocatorDumpMainPool(void);
+        OSPrivate void SLMemoryAllocatorDumpHeapInfo(void);
     #endif /* kCXBuildDev */
 #endif /* kCXBootloaderCode */
 

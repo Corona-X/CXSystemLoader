@@ -52,6 +52,8 @@ SLConfigFile *SLConfigLoad(OSUTF8Char *path)
     SLFile *file = SLOpenPath(path, kSLFileModeRead);
     if (!file) return gSLCurrentConfig;
 
+    //
+
     SLCloseFile(file);
     return gSLCurrentConfig;
 }

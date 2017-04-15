@@ -9,9 +9,8 @@
 //   %rcx: Image Handle
 //   %rdx: System Table
 //
-// Return Value (%rax):
-//   0: success
-//   other: failure
+// Return Value:
+//   This function does not return.
 //
 // Destroyed Registers:
 //   %rax
@@ -22,55 +21,49 @@
 //   %rsi
 //
 // If Debug:
-//
+//   ---
 XKDeclareFunction(_SLEntry):
-    movq (%rsp), %rax
+    movq (%rsp), %rax                                       // Copy the return address passed on the stack to the accumulator
 
-    XKLoadSymbol(gSLFirmwareReturnAddress, %rbx)
-    movq %rax, (%rbx)
+    XKLoadSymbol(gSLFirmwareReturnAddress, %rbx)            // Load the pointer to the firmware return address symbol into the b register
+    movq %rax, (%rbx)                                       // Store the return address for the firmware into memory
 
-    XKLoadSymbol(gSLLoaderImageHandle, %rbx)
-    movq %rcx, (%rbx)
+    XKLoadSymbol(gSLLoaderImageHandle, %rbx)                // Load the pointer to the loader image handle into the b register
+    movq %rcx, (%rbx)                                       // Store the image handle passed as first argument (fastcall ABI, %rcx) into memory
 
-    XKLoadSymbol(gSLLoaderSystemTable, %rbx)
-    movq %rdx, (%rbx)
+    XKLoadSymbol(gSLLoaderSystemTable, %rbx)                // Load the pointer to the system table into the b register
+    movq %rdx, (%rbx)                                       // Store the system table pointer passed as second argument (fastcall ABI, %rdx) into memory
 
     #if kCXBuildDev && !kCXTargetOSApple
-        leaq gSLLoaderBase(%rip), %rbx
-        leaq gSLLoaderEnd(%rip), %rax
-        subq %rbx, %rax
-        XKLoadSymbol(gSLLoaderImageSize, %rbx)
-        movq %rax, (%rbx)
-
-        XKLoadSymbol(gSLEnableScreenPrint, %rbx)
-        movb $1, (%rbx)
+        leaq gSLLoaderBase(%rip), %rbx                      // If custom link, load the base address of the loader into the b register
+        leaq gSLLoaderEnd(%rip), %rax                       // If custom link, load the end address of the loader into the accumulator
+        subq %rbx, %rax                                     // Calculate the size of the loader in memory
+        XKLoadSymbol(gSLLoaderImageSize, %rbx)              // Load the pointer to the size of the loader into the b register
+        movq %rax, (%rbx)                                   // Store the size of the loader into memory
     #endif /* kCXBuildDev */
 
-    XKLoadSymbol(gSLBootServicesEnabled, %rbx)
-    movb $1, (%rbx)
+    XKLoadSymbol(gSLBootServicesEnabled, %rbx)              // Load the BootServicesEnabled variable pointer into the b register
+    movb $1, (%rbx)                                         // Mark boot services as being enabled
 
     #if kCXBuildDev
-        leaq XKSymbol(__SLLibraryInitialize)(%rip), %rax
-        callq *%rax
+        leaq XKSymbol(__SLLibraryInitialize)(%rip), %rax    // Load the addres of the development library initialze routine into the accumulator
     #else /* !kCXBuildDev */
-        leaq XKSymbol(SLMemoryAllocatorInit)(%rip), %rax
-        callq *%rax
+        leaq XKSymbol(SLMemoryAllocatorInit)(%rip), %rax    // Load the address of the memory allocator initialze function into the accumulator
     #endif /* kCXBuildDev */
 
-    XKLoadSymbol(gSLLoaderImageHandle, %rbx)
-    movq (%rbx), %rdi
+    callq *%rax                                             // Call the address stored in the accumulator (depends on if a development build)
 
-    XKLoadSymbol(gSLLoaderSystemTable, %rbx)
-    movq (%rbx), %rsi
+    XKLoadSymbol(gSLLoaderImageHandle, %rbx)                // Load the pointer to the loader's image handle into the b register
+    movq (%rbx), %rdi                                       // Load the loader's image handle into the first argument register (SysV ABI, %rdi)
 
-    leaq XKSymbol(CXSystemLoaderMain)(%rip), %rax
-    callq *%rax
+    XKLoadSymbol(gSLLoaderSystemTable, %rbx)                // Load the pointer to the system table pointer into the b register
+    movq (%rbx), %rsi                                       // Load the system table pointer into the second argument register (SysV ABI, %rsi)
 
-    movq %rax, %rcx
-    leaq XKSymbol(SLLeave)(%rip), %rax
-    callq *%rax
+    leaq XKSymbol(CXSystemLoaderMain)(%rip), %rax           // Load the address of the C entry point into the accumulator
+    callq *%rax                                             // Call into the C entry point of the loader
 
-.align kXKNaturalAlignment
+    movq %rax, %rcx                                         // Use the return address from the main function as the first argument to SLLeave
+    pushq %rax                                              // Push a fake return address. SLLeave will inject firmware return address here on the stack
 
 // Arguments:
 //   %rcx: Exit Code

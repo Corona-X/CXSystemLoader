@@ -17,9 +17,7 @@
 #include <SystemLoader/EFI/SLRuntimeServices.h>
 #include <SystemLoader/EFI/SLSystemTable.h>
 
-#include <SystemLoader/SLBitmapFont.h>
 #include <SystemLoader/SLConfigFile.h>
-#include <SystemLoader/SLFormattedPrint.h>
 #include <SystemLoader/SLLibrary.h>
 #include <SystemLoader/SLLoader.h>
 #include <SystemLoader/SLMemoryAllocator.h>

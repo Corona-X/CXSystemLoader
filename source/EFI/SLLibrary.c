@@ -1,10 +1,9 @@
 #include <SystemLoader/SLLibrary.h>
 #include <SystemLoader/SLConfigFile.h>
-#include <SystemLoader/SLFormattedPrint.h>
 #include <SystemLoader/SLMemoryAllocator.h>
 #include <SystemLoader/SLLoader.h>
 #include <SystemLoader/EFI/SLSystemTable.h>
-#include <Kernel/XKMemory.h>
+#include <Kernel/XKShared.h>
 
 OSAddress SLGetMainImageHandle(void)
 {
@@ -30,22 +29,27 @@ bool SLDelayProcessor(UIntN time, bool useBootServices)
     }
 }
 
-extern UInt8 SLEFIInputConsoleRead(bool wait);
-
-UInt8 SLWaitForKeyPress(void)
-{
-    if (!SLBootServicesHaveTerminated()) {
-        return SLEFIInputConsoleRead(true);
-    } else {
-        // Need USB Keyboard Driver at this point...
-        return 0;
-    }
-}
-
 #if kCXBuildDev
+    void SLDumpConsoles(void)
+    {
+        XKLog(kXKLogLevelDebug, "Consoles:\n");
+        XKConsole *console = gXKConsoleFirst;
+        
+        while (console)
+        {
+            XKLog(kXKLogLevelDebug, "%u: %p\n", console->id, console);
+            XKLog(kXKLogLevelDebug, "  --> context: %p\n", console->context);
+            XKLog(kXKLogLevelDebug, "  --> output:  %p\n", console->write);
+            XKLog(kXKLogLevelDebug, "  --> level:   %d\n", console->level);
+            XKLog(kXKLogLevelDebug, "  --> next:    %p\n", console->next);
+        
+            console = console->next;
+        }
+    }
+
     bool SLPromptUser(const char *s)
     {
-        SLPrintString("%s (yes/no)? ", s);
+        XKLog(kXKLogLevelInfo, "%s (yes/no)? ", s);
         UInt8 response = 0;
 
         for ( ; ; )
@@ -53,7 +57,7 @@ UInt8 SLWaitForKeyPress(void)
             bool result = false, again = true;
             OSSize size;
 
-            OSUTF8Char *string = SLScanString('\n', &size);
+            OSUTF8Char *string = XKConsoleReadString('\n', &size);
             if (!string) continue;
 
             if ((size == 3) && !XKMemoryCompare(string, "yes", 3)) {
@@ -68,7 +72,7 @@ UInt8 SLWaitForKeyPress(void)
 
             if (again)
             {
-                SLPrintString("Invalid Response. %s (yes/no)? ", s);
+                XKLog(kXKLogLevelInfo, "Invalid Response. %s (yes/no)? ", s);
                 continue;
             }
 
@@ -78,19 +82,19 @@ UInt8 SLWaitForKeyPress(void)
 
     void SLShowDelay(const char *s, UInt64 seconds)
     {
-        SLPrintString("%s in ", s);
+        XKLog(kXKLogLevelInfo, "%s in ", s);
 
         while (seconds)
         {
-            SLPrintString("%d...", seconds);
+            XKPrintString("%d...", seconds);
             SLDelayProcessor(1000000, true);
-            SLDeleteCharacters(4);
+            XKConsoleDeleteCharacters(4);
 
             seconds--;
         }
 
-        SLDeleteCharacters(3);
-        SLPrintString("Now.\n");
+        XKConsoleDeleteCharacters(3);
+        XKPrintString("Now.\n");
     }
 
     void SLDumpProcessorState(bool standard, bool system, bool debug)
@@ -100,9 +104,9 @@ UInt8 SLWaitForKeyPress(void)
             XKProcessorBasicState state;
 
             XKProcessorGetBasicState(&state);
-            SLPrintString("Basic Register State:\n");
+            XKLog(kXKLogLevelVerbose, "Basic Register State:\n");
             SLPrintBasicState(&state);
-            SLPrintString("\n");
+            XKPrintString("\n");
         }
 
         if (system)
@@ -110,12 +114,12 @@ UInt8 SLWaitForKeyPress(void)
             XKProcessorSystemState state;
 
             XKProcessorGetSystemState(&state);
-            SLPrintString("System Register State:\n");
+            XKLog(kXKLogLevelVerbose, "System Register State:\n");
             SLPrintSystemState(&state);
 
             XKProcessorMSR efer = XKProcessorMSRRead(0xC0000080);
-            SLPrintString("efer: 0x%016zX\n", efer);
-            SLPrintString("\n");
+            XKLog(kXKLogLevelVerbose, "efer: 0x%016zX\n", efer);
+            XKPrintString("\n");
         }
 
         if (debug)
@@ -123,26 +127,26 @@ UInt8 SLWaitForKeyPress(void)
             XKProcessorDebugState state;
 
             XKProcessorGetDebugState(&state);
-            SLPrintString("Debug Register State:\n");
+            XKLog(kXKLogLevelVerbose, "Debug Register State:\n");
             SLPrintDebugState(&state);
-            SLPrintString("\n");
+            XKPrintString("\n");
         }
     }
 
-    #define SLPrintRegister(s, r, l, e)   SLPrintString(OSStringValue(r) e ": 0x%016" l "X", s->r)
+    #define SLPrintRegister(s, r, l, e)   XKLog(kXKLogLevelVerbose, OSStringValue(r) e ": 0x%016" l "X", s->r)
 
     #define SLPrint2Registers(s, r0, r1, l, e)      \
         SLPrintRegister(s, r0, l, e);               \
-        SLPrintString(", ");                        \
+        XKPrintString(", ");                        \
         SLPrintRegister(s, r1, l, e)
 
     #define SLPrint2RegistersS(s, r0, r1, l, e)     \
         SLPrint2Registers(s, r0, r1, l, e);         \
-        SLPrintString(", ")
+        XKPrintString(", ")
 
     #define SLPrint2RegistersE(s, r0, r1, l, e)     \
         SLPrint2Registers(s, r0, r1, l, e);         \
-        SLPrintString("\n")
+        XKPrintString("\n")
 
     void SLPrintBasicState(XKProcessorBasicState *state)
     {
@@ -165,10 +169,10 @@ UInt8 SLWaitForKeyPress(void)
         SLPrint2RegistersS(state, cr0, cr2, "z", "");
         SLPrint2RegistersE(state, cr3, cr4, "z", "");
         SLPrintRegister(state, cr8, "z", "");
-        SLPrintString("\n");
+        XKPrintString("\n");
 
-        SLPrintString("gdtr: 0x%016zX (limit = 0x%04hX)\n", state->gdtr.base, state->gdtr.limit);
-        SLPrintString("idtr: 0x%016zX (limit = 0x%04hX)\n", state->idtr.base, state->idtr.limit);
+        XKPrintString("gdtr: 0x%016zX (limit = 0x%04hX)\n", state->gdtr.base, state->gdtr.limit);
+        XKPrintString("idtr: 0x%016zX (limit = 0x%04hX)\n", state->idtr.base, state->idtr.limit);
         SLPrint2RegistersE(state, ldtr, tr, "h", "");
     }
 
@@ -184,21 +188,21 @@ UInt8 SLWaitForKeyPress(void)
         SLMemoryAllocatorInit();
         SLConfigGet();
 
-        __SLInputConsoleInitAllEFI();
-        __SLSerialConsoleInitAll();
-        __SLBitmapFontInitialize();
-        __SLVideoConsoleInitAll();
+        __XKInputConsoleInitAllEFI();
+        __XKSerialConsoleInitAll();
+        __XKBitmapFontInitialize();
+        __XKVideoConsoleInitAll();
     }
 
     void SLUnrecoverableError(void)
     {
-        SLPrintError("Unrecoverable Error.\n");
+        XKLog(kXKLogLevelError, "Unrecoverable Error.\n");
         OSFault();
     }
 #else /* !kCXBuildDev */
     void SLUnrecoverableError(void)
     {
-        SLPrintError("Unrecoverable Error.\n");
+        XKLog(kXKLogLevelError, "Unrecoverable Error.\n");
         OSFault();
     }
 #endif /* kCXBuildDev */

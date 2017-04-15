@@ -9,7 +9,7 @@
 
 #include <Corona-X.h>
 #include <SystemLoader/SLBase.h>
-#include <SystemLoader/SLBitmapFont.h>
+#include <Kernel/XKGraphics.h>
 
 #if !kCXAssemblyCode
 
@@ -52,32 +52,13 @@ typedef struct {
     SLGraphicsMode *mode;
 } SLGraphicsOutput;
 
-// Largest size supported by UEFI for the monitor
-// Always RGBX or BGRX 32-bit pixel format
-typedef struct {
-    UInt32 height;
-    UInt32 width;
-    UInt32 *framebuffer;
-    OSSize framebufferSize;
-    OSCount pixelCount;
-    bool isBGRX;
-} SLGraphicsContext;
-
-typedef struct {
-    UInt32 y;
-    UInt32 x;
-} SLGraphicsPoint;
-
 #if kCXBootloaderCode
     OSPrivate SLGraphicsOutput **SLGraphicsOutputGetAll(OSCount *count);
     OSPrivate SLGraphicsModeInfo *SLGraphicsOutputGetMode(SLGraphicsOutput *graphics, UInt32 modeNumber);
     OSPrivate SLGraphicsMode *SLGraphicsOutputGetCurrentMode(SLGraphicsOutput *graphics);
 
-    OSPrivate SLGraphicsContext *SLGraphicsOutputGetContext(SLGraphicsOutput *graphics);
-    OSPrivate SLGraphicsContext *SLGraphicsOutputGetContextWithMaxSize(SLGraphicsOutput *graphics, UInt32 maxHeight, UInt32 maxWidth);
-
-    OSPrivate void SLGraphicsContextWriteCharacter(SLGraphicsContext *context, UInt8 character, SLGraphicsPoint location, SLBitmapFont *font, UInt32 color, UInt32 bgColor);
-    OSPrivate void SLGraphicsContextWritePrerenderedCharacter(SLGraphicsContext *context, UInt8 character, SLGraphicsPoint location, SLBitmapFont *font, UInt32 color, UInt32 backgroundColor);
+    OSPrivate XKGraphicsContext *SLGraphicsOutputGetContext(SLGraphicsOutput *graphics);
+    OSPrivate XKGraphicsContext *SLGraphicsOutputGetContextWithMaxSize(SLGraphicsOutput *graphics, UInt32 maxHeight, UInt32 maxWidth);
 
     #if kCXBuildDev
         OSPrivate bool SLGraphicsOutputDumpInfo(void);

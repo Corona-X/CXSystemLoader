@@ -2,6 +2,7 @@
 #include <SystemLoader/EFI/SLSystemTable.h>
 #include <SystemLoader/SLMemoryAllocator.h>
 #include <SystemLoader/SLLibrary.h>
+#include <Kernel/XKStringFormatting.h>
 #include <Kernel/XKMemory.h>
 
 typedef struct __SLBootServicesTerminateHandler {
@@ -80,13 +81,14 @@ SLMemoryMap *SLBootServicesGetMemoryMap(void)
 
     SLMemoryMap *map = SLAllocate(sizeof(SLMemoryMap)).address;
     XKMemorySetValue(map, sizeof(SLMemoryMap), 0);
-    OSSize neededSize;
-    UIntN entrySize;
-    UInt32 version;
+    OSSize neededSize = kOSNullPointer;
+    UIntN entrySize = kOSNullPointer;
+    UInt32 version = 0;
 
     SLStatus status = SLBootServicesGetCurrent()->getMemoryMap(&neededSize, map->entries, &map->key, &entrySize, &version);
     if (entrySize != sizeof(SLMemoryDescriptor)) status = kSLStatusWrongSize;
     if (status == kSLStatusBufferTooSmall) status = kSLStatusSuccess;
+    if (status == kSLStatusBadArgument) status = kSLStatusSuccess;
     if (version != 1) status = kSLStatusIncompatibleVersion;
     if (SLStatusIsError(status)) goto fail;
 
@@ -118,11 +120,10 @@ SLMemoryMap *SLBootServicesTerminate(void)
     SLBootServicesCheck(kOSNullPointer);
 
     SLMemoryMap *finalMemoryMap = SLBootServicesGetMemoryMap();
-    SLPrintString("%p\n", finalMemoryMap);
     if (!finalMemoryMap) return kOSNullPointer;
 
     SLBootServicesTerminateHandler *handler = gSLBootServicesFirstHandler;
-    SLPrintString("Calling Boot Services Terminate Handlers...\n");
+    XKLog(kXKLogLevelInfo, "Calling Boot Services Terminate Handlers...\n");
 
     while (handler)
     {
@@ -133,16 +134,16 @@ SLMemoryMap *SLBootServicesTerminate(void)
         SLFree(oldHandler);
     }
 
-    SLPrintString("All Handlers Called; Terminating Boot Services...");
+    XKLog(kXKLogLevelInfo, "All Handlers Called; Terminating Boot Services...");
     SLStatus status = SLBootServicesGetCurrent()->terminate(SLGetMainImageHandle(), finalMemoryMap->key);
 
     if (SLStatusIsError(status)) {
-        SLPrintString(" [Failed]\n");
+        XKPrintString(" [Failed]\n");
         SLFree(finalMemoryMap);
 
         return kOSNullPointer;
     } else {
-        SLPrintString(" [Success]\n");
+        XKPrintString(" [Success]\n");
         gSLBootServicesEnabled = false;
 
         return finalMemoryMap;

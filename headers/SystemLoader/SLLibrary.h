@@ -15,28 +15,20 @@
 #if !kCXAssemblyCode
 
 #if kCXBootloaderCode
-    #define SLBootServicesCheck(e)                                                                      \
-        do {                                                                                            \
-            if (SLBootServicesHaveTerminated())                                                         \
-            {                                                                                           \
-                SLPrintError("Error: Function %s called after Boot Services Terminated!\n", __func__);  \
-                return (e);                                                                             \
-            }                                                                                           \
+    #define SLBootServicesCheck(e)                                                                          \
+        do {                                                                                                \
+            if (SLBootServicesHaveTerminated())                                                             \
+            {                                                                                               \
+                XKLog(kXKLogLevelError, "Function %s called after Boot Services Terminated!\n", __func__);  \
+                return (e);                                                                                 \
+            }                                                                                               \
         } while (0)
 
     OSPrivate SLABI OSNoReturn void SLLeave(SLStatus status);
     OSPrivate OSAddress SLGetMainImageHandle(void);
     OSPrivate OSNoReturn void SLUnrecoverableError(void);
     OSPrivate bool SLDelayProcessor(UIntN time, bool useBootServices);
-    OSPrivate UInt8 SLWaitForKeyPress(void);
-
-    #if kCXTargetOSApple
-        #define SLPrintError SLPrintString
-
-        OSPrivate void SLPrintString(const char *s, ...);
-    #else /* !kCXTargetOSApple */
-        OSPrivate void SLPrintError(const char *s, ...);
-    #endif /* kCXTargetOSApple */
+    OSPrivate void SLDumpConsoles(void);
 
     OSExport OSAddress gSLFirmwareReturnAddress;
     OSExport SLSystemTable *gSLLoaderSystemTable;
@@ -52,10 +44,10 @@
         OSPrivate void SLPrintSystemState(XKProcessorSystemState *state);
         OSPrivate void SLPrintDebugState(XKProcessorDebugState *state);
 
-        OSPrivate void __SLInputConsoleInitAllEFI(void);
-        OSPrivate void __SLSerialConsoleInitAll(void);
-        OSPrivate void __SLVideoConsoleInitAll(void);
-        OSPrivate void __SLBitmapFontInitialize(void);
+        OSPrivate void __XKInputConsoleInitAllEFI(void);
+        OSPrivate void __XKSerialConsoleInitAll(void);
+        OSPrivate void __XKVideoConsoleInitAll(void);
+        OSPrivate void __XKBitmapFontInitialize(void);
         OSPrivate void __SLLibraryInitialize(void);
 
         OSExport OSSize gSLLoaderImageSize;

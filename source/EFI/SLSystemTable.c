@@ -1,8 +1,7 @@
 #include <SystemLoader/EFI/SLSystemTable.h>
 #include <SystemLoader/SLMemoryAllocator.h>
-#include <SystemLoader/SLFormattedPrint.h>
 #include <SystemLoader/SLLibrary.h>
-#include <Kernel/XKMemory.h>
+#include <Kernel/XKShared.h>
 
 SLSystemTable *SLSystemTableGetCurrent(void)
 {
@@ -36,26 +35,26 @@ CPRootDescriptor *SLSystemTableGetACPIRoot(SLSystemTable *table)
 
         if (!count)
         {
-            SLPrintString("Warning: No UEFI Config Tables Found!\n");
+            XKLog(kXKLogLevelVerbose, "Warning: No UEFI Config Tables Found!\n");
             return;
         }
 
-        SLPrintString("Dumping %d Configuration Tables:\n", count);
-        SLPrintString("Note: First table is at %p\n", table->configTables);
+        XKLog(kXKLogLevelVerbose, "Dumping %d UEFI Configuration Tables:\n", count);
+        XKLog(kXKLogLevelVerbose, "First table is at %p\n", table->configTables);
 
         for (OSIndex i = 0; i < count; i++)
         {
             SLConfigTable *configTable = &table->configTables[i];
-            OSUTF8Char *id = SLUIDToString(&configTable->id);
+            OSUTF8Char *id = XKUIDToString(&configTable->id);
 
-            SLPrintString("Config Table %d: {\n", i);
-            SLPrintString("    ID: %s\n", id);
-            SLPrintString("    Address: %p\n", configTable->pointer);
-            SLPrintString("} ");
+            XKPrintString("Config Table %d: {\n", i);
+            XKLog(kXKLogLevelVerbose, "    ID: %s\n", id);
+            XKLog(kXKLogLevelVerbose, "    Address: %p\n", configTable->pointer);
+            XKLog(kXKLogLevelVerbose, "} ");
 
             SLFree(id);
         }
 
-        SLPrintString("\n\n");
+        XKPrintString("\n\n");
     }
 #endif /* kCXBuildDev */

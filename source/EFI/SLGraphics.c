@@ -1,8 +1,8 @@
 #include <SystemLoader/EFI/SLGraphics.h>
 #include <SystemLoader/EFI/SLBootServices.h>
 #include <SystemLoader/SLMemoryAllocator.h>
-#include <SystemLoader/SLFormattedPrint.h>
 #include <SystemLoader/SLLibrary.h>
+#include <Kernel/XKShared.h>
 
 SLGraphicsOutput **SLGraphicsOutputGetAll(OSCount *count)
 {
@@ -58,12 +58,12 @@ SLGraphicsMode *SLGraphicsOutputGetCurrentMode(SLGraphicsOutput *graphics)
     return graphics->mode;
 }
 
-SLGraphicsContext *SLGraphicsOutputGetContext(SLGraphicsOutput *graphics)
+XKGraphicsContext *SLGraphicsOutputGetContext(SLGraphicsOutput *graphics)
 {
     return SLGraphicsOutputGetContextWithMaxSize(graphics, ~((UInt32)0), ~((UInt32)0));
 }
 
-SLGraphicsContext *SLGraphicsOutputGetContextWithMaxSize(SLGraphicsOutput *graphics, UInt32 maxHeight, UInt32 maxWidth)
+XKGraphicsContext *SLGraphicsOutputGetContextWithMaxSize(SLGraphicsOutput *graphics, UInt32 maxHeight, UInt32 maxWidth)
 {
     SLBootServicesCheck(kOSNullPointer);
 
@@ -113,7 +113,7 @@ SLGraphicsContext *SLGraphicsOutputGetContextWithMaxSize(SLGraphicsOutput *graph
     if (SLStatusIsError(status)) return kOSNullPointer;
     SLGraphicsMode *mode = SLGraphicsOutputGetCurrentMode(graphics);
 
-    SLGraphicsContext *context = SLAllocate(sizeof(SLGraphicsContext)).address;
+    XKGraphicsContext *context = SLAllocate(sizeof(XKGraphicsContext)).address;
     context->height = mode->info->height;
     context->width = mode->info->width;
     context->framebuffer = mode->framebuffer;
@@ -123,101 +123,3 @@ SLGraphicsContext *SLGraphicsOutputGetContextWithMaxSize(SLGraphicsOutput *graph
 
     return context;
 }
-
-void SLGraphicsContextWriteCharacter(SLGraphicsContext *context, UInt8 character, SLGraphicsPoint location, SLBitmapFont *font, UInt32 color, UInt32 bgColor)
-{
-    UInt32 *rowPointer = context->framebuffer + ((location.y * context->width) + location.x);
-    UInt8 *characterData = font->packedData + (character * font->height);
-    
-    for (OSCount y = 0; y < font->height; y++)
-    {
-        UInt8 data = characterData[y];
-
-        for (SInt8 x = (font->width - 1); x >= 0; x--)
-        {
-            UInt8 state = (data >> x) & 1;
-            UInt32 fillValue = (state ? color : bgColor);
-
-            rowPointer[x] = fillValue;
-        }
-
-        rowPointer += context->width;
-    }
-}
-
-void SLGraphicsContextWritePrerenderedCharacter(SLGraphicsContext *context, UInt8 character, SLGraphicsPoint location, SLBitmapFont *font, UInt32 color, UInt32 backgroundColor)
-{
-    UInt32 *rowPointer = context->framebuffer + ((location.y * context->width) + location.x);
-    UInt8 *characterData = font->fontData + ((font->height * font->width) * character);
-    OSCount y = font->height - 1;
-
-    do {
-        for (UInt8 i = 0; i < font->width; i++)
-            rowPointer[i] = (characterData[i] ? color : backgroundColor);
-
-        characterData += font->width;
-        rowPointer += context->width;
-    } while (y--);
-}
-
-#if kCXBuildDev
-    bool SLGraphicsOutputDumpInfo(void)
-    {
-        SLBootServicesCheck(false);
-
-        OSCount count;
-        SLGraphicsOutput **screens = SLGraphicsOutputGetAll(&count);
-
-        if (!screens)
-        {
-            SLPrintString("Error: Could not enumerate connected screens\n");
-            return false;
-        }
-
-        SLPrintString("Detected %zu connected screens:\n", count);
-
-        for (OSCount i = 0; i < count; i++)
-        {
-            UInt32 modeCount = screens[i]->mode->numberOfModes;
-
-            SLPrintString("screens[%u]: {\n", i);
-            SLPrintString("    Address:          %p\n", screens[i]);
-            SLPrintString("    Current Mode:     %u\n", screens[i]->mode->currentMode);
-            SLPrintString("    Framebuffer Size: %zu\n", screens[i]->mode->framebufferSize);
-            SLPrintString("    Framebuffer:      %p\n", screens[i]->mode->framebuffer);
-            SLPrintString("    Modes (%u):\n", modeCount);
-
-            for (UInt32 j = 0; j < modeCount; j++)
-            {
-                SLGraphicsModeInfo *mode = SLGraphicsOutputGetMode(screens[i], j);
-                const char *format;
-
-                if (!mode)
-                {
-                    SLPrintString("Error: Could not get mode %d\n", j);
-                    return false;
-                }
-
-                switch (mode->format)
-                {
-                    case kSLGraphicsPixelFormatRGBX8:   format = "RGB";      break;
-                    case kSLGraphicsPixelFormatBGRX8:   format = "BGR";      break;
-                    case kSLGraphicsPixelFormatBitMask: format = "Bit Mask"; break;
-                    case kSLGraphicsPixelFormatBLT:     format = "BLT";      break;
-                }
-
-                SLPrintString("        %03u: ", j);
-                SLPrintString("{%p: %04ux%04u ", mode, mode->width, mode->height);
-                SLPrintString("[%s; v%u;  ", format, mode->version);
-                SLPrintString("%04u PPS]}\n", mode->pixelsPerScanline);
-            }
-
-            SLPrintString("}, ");
-        }
-
-        SLDeleteCharacters(2);
-        SLPrintString("\n");
-
-        return true;
-    }
-#endif /* kCXBuildDev */

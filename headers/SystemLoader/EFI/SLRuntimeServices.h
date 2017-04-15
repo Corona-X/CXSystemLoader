@@ -14,7 +14,20 @@
 
 typedef struct {
     SLTableHeader header;
-    OSAddress unused[14];
+    OSAddress getTime;
+    OSAddress setTime;
+    OSAddress getWakeupTime;
+    OSAddress setWakeupTime;
+    OSAddress setVirtualMap;
+    OSAddress convertPointer;
+    SLABI SLStatus (*getVariable)(OSUTF16Char *name, SLProtocol *vendorUID, UInt32 *attributes, UIntN *size, OSAddress data);
+    OSAddress getNextVariableName;
+    OSAddress setVariable;
+    OSAddress getCounterHigh;
+    OSAddress resetSystem;
+    OSAddress updateCapsule;
+    OSAddress queryCapsuleCapabilities;
+    OSAddress quearyVariableInfo;
 } SLRuntimeServices;
 
 #if kCXBootloaderCode

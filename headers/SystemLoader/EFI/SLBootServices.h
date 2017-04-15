@@ -34,7 +34,7 @@ typedef OSEnum(UInt32) {
     kSLMemoryTypeRuntimeData    = 0x6,
     kSLMemoryTypeFree           = 0x7,
     kSLMemoryTypeUnusable       = 0x8,
-    kSLMemoryTypeACPIReclaimed  = 0x9,
+    kSLMemoryTypeACPIReclaim    = 0x9,
     kSLMemoryTypeACPINVS        = 0xA,
     kSLMemoryTypeMappedIO       = 0xB,
     kSLMemoryTypeMappedIOPorts  = 0xC,
