@@ -1,4 +1,5 @@
 #include <SystemLoader/SystemLoader.h>
+#include <SystemLoader/SLDebug.h>
 #include <Kernel/XKShared.h>
 
 #if kCXBuildDev

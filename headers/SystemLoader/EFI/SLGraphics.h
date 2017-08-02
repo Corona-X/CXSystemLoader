@@ -9,7 +9,7 @@
 
 #include <Corona-X.h>
 #include <SystemLoader/SLBase.h>
-#include <Kernel/XKGraphics.h>
+#include <Kernel/XKDebugLog.h>
 
 #if !kCXAssemblyCode
 
@@ -59,10 +59,6 @@ typedef struct {
 
     OSPrivate XKGraphicsContext *SLGraphicsOutputGetContext(SLGraphicsOutput *graphics);
     OSPrivate XKGraphicsContext *SLGraphicsOutputGetContextWithMaxSize(SLGraphicsOutput *graphics, UInt32 maxHeight, UInt32 maxWidth);
-
-    #if kCXBuildDev
-        OSPrivate bool SLGraphicsOutputDumpInfo(void);
-    #endif /* kCXBuildDev */
 #endif /* kCXBootloaderCode */
 
 #endif /* !kCXAssemblyCode */

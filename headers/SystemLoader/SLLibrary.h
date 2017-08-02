@@ -28,32 +28,11 @@
     OSPrivate OSAddress SLGetMainImageHandle(void);
     OSPrivate OSNoReturn void SLUnrecoverableError(void);
     OSPrivate bool SLDelayProcessor(UIntN time, bool useBootServices);
-    OSPrivate void SLDumpConsoles(void);
 
     OSExport OSAddress gSLFirmwareReturnAddress;
     OSExport SLSystemTable *gSLLoaderSystemTable;
     OSExport OSAddress gSLLoaderImageHandle;
     OSExport bool gSLBootServicesEnabled;
-
-    #if kCXBuildDev
-        OSPrivate bool SLPromptUser(const char *s);
-        OSPrivate void SLShowDelay(const char *s, UInt64 seconds);
-
-        OSPrivate void SLDumpProcessorState(bool standard, bool system, bool debug);
-        OSPrivate void SLPrintBasicState(XKProcessorBasicState *state);
-        OSPrivate void SLPrintSystemState(XKProcessorSystemState *state);
-        OSPrivate void SLPrintDebugState(XKProcessorDebugState *state);
-
-        OSPrivate void __XKInputConsoleInitAllEFI(void);
-        OSPrivate void __XKSerialConsoleInitAll(void);
-        OSPrivate void __XKVideoConsoleInitAll(void);
-        OSPrivate void __XKBitmapFontInitialize(void);
-        OSPrivate void __SLLibraryInitialize(void);
-
-        OSExport OSSize gSLLoaderImageSize;
-    #else /* !kCXBuildDev */
-        #define SLPrintString(s, ...) do {} while(0)
-    #endif /* kCXBuildDev */
 #endif /* kCXBootloaderCode */
 
 #endif /* !kCXAssemblyCode */

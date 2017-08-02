@@ -1,4 +1,4 @@
-#include <Kernel/XKAssembly.h>
+#include <Kernel/XKAssemblyCode.h>
 
 #if kCXArchIA
 
@@ -34,7 +34,7 @@ XKDeclareFunction(_SLEntry):
     XKLoadSymbol(gSLLoaderSystemTable, %rbx)                // Load the pointer to the system table into the b register
     movq %rdx, (%rbx)                                       // Store the system table pointer passed as second argument (fastcall ABI, %rdx) into memory
 
-    #if kCXBuildDev && !kCXTargetOSApple
+    #if kCXBuildDev && !kCXHostOSApple
         leaq gSLLoaderBase(%rip), %rbx                      // If custom link, load the base address of the loader into the b register
         leaq gSLLoaderEnd(%rip), %rax                       // If custom link, load the end address of the loader into the accumulator
         subq %rbx, %rax                                     // Calculate the size of the loader in memory
@@ -72,9 +72,9 @@ XKDeclareFunction(_SLEntry):
 // without returning. It can do pretty
 // much whatever it wants...
 XKDeclareFunction(SLLeave):
-    movq %rcx, %rdx
-    XKLoadSymbol(gSLLoaderImageHandle, %rbx)
-    movq (%rbx), %rcx
+    movq %rcx, %rdx                                         // Save exit code in the d register
+    XKLoadSymbol(gSLLoaderImageHandle, %rbx)                // Load the EFI image handle pointer
+    movq (%rbx), %rcx                                       //
     xorq %r8, %r8
     xorq %r9, %r9
     XKLoadSymbol(gSLLoaderSystemTable, %rax)
@@ -86,10 +86,10 @@ XKDeclareFunction(SLLeave):
     // Return to the address given by the firmware
     // on the initial program stack (saved in entry)
     XKLoadSymbol(gSLFirmwareReturnAddress, %rbx)
-    movq (%rbx), %rax // Load return address into accumulator
-    popq %rbx         // Kill real return address on the stack
-    pushq (%rax)      // Inject firmware return address
-    ret               // Return to given address
+    movq (%rbx), %rax                                       // Load return address into accumulator
+    popq %rcx                                               // Kill real return address on the stack
+    pushq (%rax)                                            // Inject firmware return address
+    ret                                                     // Return to given address
 
 .comm XKSymbol(gSLFirmwareReturnAddress), 8, 8
 .comm XKSymbol(gSLLoaderSystemTable),     8, 8

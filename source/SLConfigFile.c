@@ -2,10 +2,14 @@
 #include <SystemLoader/SLMemoryAllocator.h>
 #include <SystemLoader/SLLoader.h>
 #include <SystemLoader/EFI/SLFile.h>
-#include <Kernel/XKSerial.h>
-#include <Kernel/XKMemory.h>
+#include <Kernel/XKLegacy.h>
+#include <Kernel/XKUtilities.h>
 
-SLConfigFile *gSLCurrentConfig = kOSNullPointer;;
+SLConfigFile *gSLCurrentConfig = kOSNullPointer;
+
+const static SLConfigFile kSLDefaultConfig = {
+    
+};
 
 SLConfigFile *SLConfigLoad(OSUTF8Char *path)
 {
@@ -28,9 +32,9 @@ SLConfigFile *SLConfigLoad(OSUTF8Char *path)
         gSLCurrentConfig->dev.serialConsole.worldLength = kXKSerialWordLength8Bits;
         gSLCurrentConfig->dev.serialConsole.parityType = kXKSerialNoParity;
         gSLCurrentConfig->dev.serialConsole.stopBits = kXKSerial1StopBit;
-        gSLCurrentConfig->dev.serialConsole.enabled = true;
+        //gSLCurrentConfig->dev.serialConsole.enabled = true;
 
-        gSLCurrentConfig->dev.memoryConsole.size = (1 << 18);         // 258 KiB
+        /*gSLCurrentConfig->dev.memoryConsole.size = (1 << 18);         // 258 KiB
         gSLCurrentConfig->dev.memoryConsole.scrollAmount = (1 << 10); // 1 KiB
         gSLCurrentConfig->dev.memoryConsole.defaultBackingPath = (OSUTF8Char *)kSLLoaderDataDirectory "/SLMemoryConsole.log";
         gSLCurrentConfig->dev.memoryConsole.enabled = false;
@@ -38,7 +42,7 @@ SLConfigFile *SLConfigLoad(OSUTF8Char *path)
         gSLCurrentConfig->dev.fileConsole.paths = kOSNullPointer;
         gSLCurrentConfig->dev.fileConsole.pathCount = 0;
         gSLCurrentConfig->dev.fileConsole.mode = kSLFileConsoleModeCreateNew;
-        gSLCurrentConfig->dev.fileConsole.enabled = false;
+        gSLCurrentConfig->dev.fileConsole.enabled = false;*/
 
         gSLCurrentConfig->dev.bootFile = (OSUTF8Char *)"/boot.car";
     }
@@ -64,4 +68,10 @@ SLConfigFile *SLConfigGet(void)
         SLConfigLoad((OSUTF8Char *)kSLLoaderDataDirectory "/" kSLLoaderConfigFile);
 
     return gSLCurrentConfig;
+}
+
+bool SLConfigSave(SLConfigFile *config)
+{
+    XKLog(kXKLogLevelWarning, "%s is not yet implemneted!\n", __func__);
+    return false;
 }

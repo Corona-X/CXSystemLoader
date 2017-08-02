@@ -1,6 +1,7 @@
-# Mac OS X Files
+# Mac OS X Files/User Data
 **/.DS_Store
 xcuserdata/
+.tags*
 
 # Objects, Libraries, Executables, etc...
 *.dylib

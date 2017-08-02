@@ -9,7 +9,7 @@
 
 #include <Corona-X.h>
 #include <SystemLoader/SLBase.h>
-#include <Kernel/XKSerial.h>
+#include <Kernel/XKLegacy.h>
 
 #if !kCXAssemblyCode
 
@@ -19,16 +19,16 @@ typedef OSEnum(UInt8, SLFileConsoleMode) {
 };
 
 typedef struct {
-    struct {
-        UInt8 maxScreenCount;
+    struct __SLVideoConfig {
+        UInt8  maxScreenCount;
         UInt32 maxScreenHeight;
         UInt32 maxScreenWidth;
-        UInt32 backgroundColor;
         UInt32 foregroundColor;
-        
+        UInt32 backgroundColor;
+
         bool enabled;
     } videoConsole;
-    struct {
+    struct __SLSerialConfig {
         XKSerialPort *ports;
         UInt8 portCount;
 
@@ -37,25 +37,21 @@ typedef struct {
         UInt8 parityType;
         UInt8 stopBits;
 
-        bool enabled;
+        bool enableOutput;
+        bool enableInput;
     } serialConsole;
-    struct {
-        OSSize size;
-        UInt16 scrollAmount;
-        OSUTF8Char *defaultBackingPath;
-        
-        bool enabled;
-    } memoryConsole;
-    struct {
-        OSUTF8Char **paths;
-        UInt32 pathCount;
+    struct __SLLogConfig {
         SLFileConsoleMode mode;
-        
-        bool enabled;
-    } fileConsole;
+        OSUTF8Char *filePath;
+        OSSize size;
+    } logConfig;
 
     OSUTF8Char *bootFile;
 } SLConfigDev;
+
+typedef struct __SLVideoConfig SLVideoConfig;
+typedef struct __SLSerialConfig SLSerialConfig;
+typedef struct __SLLogConfig SLLogConfig;
 
 typedef struct {
     SLProtocol rootParitionID;
@@ -71,6 +67,7 @@ typedef struct {
 #if kCXBootloaderCode
     OSPrivate SLConfigFile *SLConfigLoad(OSUTF8Char *path);
     OSPrivate SLConfigFile *SLConfigGet(void);
+    OSPrivate bool SLConfigSave(SLConfigFile *config);
 #endif /* kCXBootloaderCode */
 
 #endif /* !kCXAssemblyCode */

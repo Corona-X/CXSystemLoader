@@ -2,8 +2,8 @@
 #include <SystemLoader/EFI/SLLoadedImage.h>
 #include <SystemLoader/SLMemoryAllocator.h>
 #include <SystemLoader/SLLibrary.h>
-#include <Kernel/XKUnicode.h>
-#include <Kernel/XKMemory.h>
+#include <Kernel/XKUtilities.h>
+#include <Kernel/XKDebugLog.h>
 
 SLFile *SLGetRootDirectoryForImage(OSAddress imageHandle)
 {

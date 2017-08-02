@@ -2,8 +2,8 @@
 #include <SystemLoader/EFI/SLSystemTable.h>
 #include <SystemLoader/SLMemoryAllocator.h>
 #include <SystemLoader/SLLibrary.h>
-#include <Kernel/XKStringFormatting.h>
-#include <Kernel/XKMemory.h>
+#include <Kernel/XKDebugLog.h>
+#include <Kernel/XKUtilities.h>
 
 typedef struct __SLBootServicesTerminateHandler {
     void (*function)(SLMemoryMap *finalMap, OSAddress context);

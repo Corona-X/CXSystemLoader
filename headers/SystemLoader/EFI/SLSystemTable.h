@@ -37,10 +37,6 @@ typedef struct {
 #if kCXBootloaderCode
     OSPrivate SLSystemTable *SLSystemTableGetCurrent(void);
     OSPrivate CPRootDescriptor *SLSystemTableGetACPIRoot(SLSystemTable *table);
-
-    #if kCXBuildDev
-        OSPrivate void SLSystemTableDumpConfigTables(SLSystemTable *table);
-    #endif /* kCXBuildDev */
 #endif /* kCXBootloaderCode */
 
 #endif /* !kCXAssemblyCode */
