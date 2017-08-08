@@ -45,12 +45,7 @@ XKDeclareFunction(_SLEntry):
     XKLoadSymbol(gSLBootServicesEnabled, %rbx)              // Load the BootServicesEnabled variable pointer into the b register
     movb $1, (%rbx)                                         // Mark boot services as being enabled
 
-    #if kCXBuildDev
-        leaq XKSymbol(__SLLibraryInitialize)(%rip), %rax    // Load the addres of the development library initialze routine into the accumulator
-    #else /* !kCXBuildDev */
-        leaq XKSymbol(SLMemoryAllocatorInit)(%rip), %rax    // Load the address of the memory allocator initialze function into the accumulator
-    #endif /* kCXBuildDev */
-
+    leaq XKSymbol(SLMemoryAllocatorInit)(%rip), %rax        // Load the address of the memory allocator initialze function into the accumulator
     callq *%rax                                             // Call the address stored in the accumulator (depends on if a development build)
 
     XKLoadSymbol(gSLLoaderImageHandle, %rbx)                // Load the pointer to the loader's image handle into the b register
@@ -74,13 +69,13 @@ XKDeclareFunction(_SLEntry):
 XKDeclareFunction(SLLeave):
     movq %rcx, %rdx                                         // Save exit code in the d register
     XKLoadSymbol(gSLLoaderImageHandle, %rbx)                // Load the EFI image handle pointer
-    movq (%rbx), %rcx                                       //
-    xorq %r8, %r8
-    xorq %r9, %r9
-    XKLoadSymbol(gSLLoaderSystemTable, %rax)
-    movq (%rax), %rbx
-    movq 0x60(%rbx), %rax
-    callq *0xD8(%rax)
+    movq (%rbx), %rcx                                       // Store the image handle in the c register
+    xorq %r8, %r8                                           // Clear 3rd argument
+    xorq %r9, %r9                                           // Clear 4th argument
+    XKLoadSymbol(gSLLoaderSystemTable, %rax)                // Load the EFI system table pointer
+    movq (%rax), %rbx                                       // Store the system table into the accumulator
+    movq 0x60(%rbx), %rax                                   // Locate the address of the boot services table
+    callq *0xD8(%rax)                                       // Call the boot services exit function
 
     // If we're here, there was an error exiting.
     // Return to the address given by the firmware
@@ -102,12 +97,12 @@ XKDeclareFunction(SLLeave):
 #endif /* kCXBuildDev */
 
 #if kCXTargetOSLinux
-.section .reloc, "a", @progbits
+    .section .reloc, "a", @progbits
 
-// Pretend like we're a relocatable executable...
-.int 0
-.int 10
-.word 0
+    // Pretend like we're a relocatable executable...
+    .int 0
+    .int 10
+    .word 0
 #endif /* Target OS */
 
 #endif /* Arch */

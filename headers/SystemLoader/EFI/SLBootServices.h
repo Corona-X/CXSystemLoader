@@ -95,7 +95,7 @@ typedef struct {
 
 #if kCXBootloaderCode
     OSPrivate SLBootServices *SLBootServicesGetCurrent(void);
-    OSPrivate void SLBootServicesRegisterTerminationFunction(void (*function)(SLMemoryMap *finalMap, OSAddress context), OSAddress context);
+    //OSPrivate void SLBootServicesRegisterTerminationFunction(void (*function)(SLMemoryMap *finalMap, OSAddress context), OSAddress context);
 
     OSPrivate bool SLBootServicesAllocatePages(OSAddress base, OSCount pages);
     OSPrivate OSBuffer SLBootServicesAllocateAnyPages(OSCount pages);

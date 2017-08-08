@@ -2,16 +2,7 @@
 #include <SystemLoader/EFI/SLSystemTable.h>
 #include <SystemLoader/SLMemoryAllocator.h>
 #include <SystemLoader/SLLibrary.h>
-#include <Kernel/XKDebugLog.h>
-#include <Kernel/XKUtilities.h>
-
-typedef struct __SLBootServicesTerminateHandler {
-    void (*function)(SLMemoryMap *finalMap, OSAddress context);
-    OSAddress context;
-    struct __SLBootServicesTerminateHandler *next;
-} SLBootServicesTerminateHandler;
-
-SLBootServicesTerminateHandler *gSLBootServicesFirstHandler = kOSNullPointer;
+#include <Kernel/C/SLMemory.h>
 
 SLBootServices *SLBootServicesGetCurrent(void)
 {
@@ -21,28 +12,6 @@ SLBootServices *SLBootServicesGetCurrent(void)
 bool SLBootServicesHaveTerminated(void)
 {
     return !gSLBootServicesEnabled;
-}
-
-void SLBootServicesRegisterTerminationFunction(void (*function)(SLMemoryMap *finalMap, OSAddress context), OSAddress context)
-{
-    SLBootServicesCheck((void)(0));
-
-    SLBootServicesTerminateHandler *newHandler = SLAllocate(sizeof(SLBootServicesTerminateHandler)).address;
-    SLBootServicesTerminateHandler *handler = gSLBootServicesFirstHandler;
-
-    if (OSExpect(handler)) {
-        while (handler->next)
-            handler = handler->next;
-
-        handler->next = newHandler;
-        handler = newHandler;
-    } else {
-        gSLBootServicesFirstHandler = handler = newHandler;
-    }
-
-    handler->function = function;
-    handler->context = context;
-    handler->next = kOSNullPointer;
 }
 
 bool SLBootServicesAllocatePages(OSAddress base, OSCount pages)
@@ -122,28 +91,13 @@ SLMemoryMap *SLBootServicesTerminate(void)
     SLMemoryMap *finalMemoryMap = SLBootServicesGetMemoryMap();
     if (!finalMemoryMap) return kOSNullPointer;
 
-    SLBootServicesTerminateHandler *handler = gSLBootServicesFirstHandler;
-    XKLog(kXKLogLevelInfo, "Calling Boot Services Terminate Handlers...\n");
-
-    while (handler)
-    {
-        handler->function(finalMemoryMap, handler->context);
-
-        SLBootServicesTerminateHandler *oldHandler = handler;
-        handler = handler->next;
-        SLFree(oldHandler);
-    }
-
-    XKLog(kXKLogLevelInfo, "All Handlers Called; Terminating Boot Services...");
     SLStatus status = SLBootServicesGetCurrent()->terminate(SLGetMainImageHandle(), finalMemoryMap->key);
 
     if (SLStatusIsError(status)) {
-        // XKPrintString(" [Failed]\n");
         SLFree(finalMemoryMap);
 
         return kOSNullPointer;
     } else {
-        // XKPrintString(" [Success]\n");
         gSLBootServicesEnabled = false;
 
         return finalMemoryMap;

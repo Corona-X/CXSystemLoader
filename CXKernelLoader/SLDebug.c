@@ -162,39 +162,6 @@ void SLShowDelay(const char *s, UInt64 seconds)
     XKPrintString("Now.\n");
 }
 
-void SLMemoryAllocatorDumpHeapInfo(void)
-{
-    XKLog(kXKLogLevelVerbose, "Heap Info:\n");
-    XKLog(kXKLogLevelVerbose, "Base Address: %p\n", gSLCurrentHeap.baseAddress);
-    XKLog(kXKLogLevelVerbose, "Size: %u/%u ", gSLCurrentHeap.currentSize, gSLCurrentHeap.maxSize);
-    XKLog(kXKLogLevelVerbose, "(0x%zX/0x%zX)\n", gSLCurrentHeap.currentSize, gSLCurrentHeap.maxSize);
-    XKLog(kXKLogLevelVerbose, "Will Free:    %s\n", (gSLCurrentHeap.shouldFree ? "yes" : "no"));
-}
-
-void SLMemoryAllocatorDumpMainPool(void)
-{
-    XKLog(kXKLogLevelVerbose, "Pool Info:\n");
-    XKLog(kXKLogLevelVerbose, "Base Address: %p\n", gSLPoolInfo.address);
-    XKLog(kXKLogLevelVerbose, "Size: %u/%u ", gSLPoolInfo.usedSize, gSLPoolInfo.size);
-    XKLog(kXKLogLevelVerbose, "(0x%zX/0x%zX)\n", gSLPoolInfo.usedSize, gSLPoolInfo.size);
-    XKLog(kXKLogLevelVerbose, "Node List:\n");
-
-    SLMemoryNode *node = gSLPoolInfo.head;
-    OSCount spaces = 0;
-
-    while (node)
-    {
-        XKLog(kXKLogLevelVerbose, "");
-
-        for (OSCount i = 0; i < spaces; i++)
-            XKPrintString(" ");
-
-        XKPrintString("--> %p (0x%zX bytes) --> %p\n", node, node->size, node->next);
-        node = node->next;
-        spaces += 2;
-    }
-}
-
 void SLDumpProcessorState(bool standard, bool system, bool debug)
 {
     if (standard)

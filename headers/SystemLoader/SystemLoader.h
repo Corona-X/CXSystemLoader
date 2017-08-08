@@ -20,6 +20,5 @@
 #include <SystemLoader/SLConfigFile.h>
 #include <SystemLoader/SLLibrary.h>
 #include <SystemLoader/SLLoader.h>
-#include <SystemLoader/SLMemoryAllocator.h>
 
 #endif /* !defined(__SYSTEM__) */

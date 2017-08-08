@@ -9,7 +9,7 @@
 
 #include <Corona-X.h>
 #include <System/OSTypes.h>
-#include <Kernel/XKProcessorState.h>
+#include <Kernel/Shared/XKProcessorState.h>
 #include <SystemLoader/EFI/SLSystemTable.h>
 
 OSPrivate void SLEarlyPrint(const char *format, ...);
@@ -36,7 +36,5 @@ OSPrivate void SLMemoryAllocatorDumpHeapInfo(void);
 OSPrivate bool SLGraphicsOutputDumpInfo(void);
 
 OSPrivate void SLSystemTableDumpConfigTables(SLSystemTable *table);
-
-OSExport OSSize gSLLoaderImageSize;
 
 #endif /* !defined(__SYSTEMLOADER_SLDEBUG__) */

@@ -2,8 +2,6 @@
 #include <SystemLoader/EFI/SLLoadedImage.h>
 #include <SystemLoader/SLMemoryAllocator.h>
 #include <SystemLoader/SLLibrary.h>
-#include <Kernel/XKUtilities.h>
-#include <Kernel/XKDebugLog.h>
 
 SLFile *SLGetRootDirectoryForImage(OSAddress imageHandle)
 {
@@ -136,22 +134,4 @@ OSBuffer SLReadPathFully(OSUTF8Char *path)
     }
 
     return result;
-}
-
-OSUTF16Char *SLPathToEFIPath(OSUTF8Char *path)
-{
-    OSSize copySize = XKUTF8Length(path) + 1;
-    OSUTF8Char *copy = SLAllocate(copySize).address;
-    XKMemoryCopy(path, copy, copySize);
-
-    for (OSIndex i = 0; i < (copySize - 1); i++)
-    {
-        if (copy[i] == '/')
-            copy[i] = '\\';
-    }
-
-    OSUTF16Char *efiPath = XKUTF8ToUTF16(copy);
-    SLFree(copy);
-
-    return efiPath;
 }

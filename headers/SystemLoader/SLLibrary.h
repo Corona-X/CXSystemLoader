@@ -9,8 +9,9 @@
 
 #include <Corona-X.h>
 #include <SystemLoader/SLBase.h>
+#include <SystemLoader/EFI/SLBootServices.h>
 #include <SystemLoader/EFI/SLSystemTable.h>
-#include <Kernel/XKProcessorState.h>
+#include <SystemLoader/SLBasicIO.h>
 
 #if !kCXAssemblyCode
 
@@ -19,7 +20,7 @@
         do {                                                                                                \
             if (SLBootServicesHaveTerminated())                                                             \
             {                                                                                               \
-                XKLog(kXKLogLevelError, "Function %s called after Boot Services Terminated!\n", __func__);  \
+                SLPrintString("Function %s called after Boot Services Terminated!\n", __func__);            \
                 return (e);                                                                                 \
             }                                                                                               \
         } while (0)
@@ -33,6 +34,7 @@
     OSExport SLSystemTable *gSLLoaderSystemTable;
     OSExport OSAddress gSLLoaderImageHandle;
     OSExport bool gSLBootServicesEnabled;
+    OSExport OSSize gSLLoaderImageSize;
 #endif /* kCXBootloaderCode */
 
 #endif /* !kCXAssemblyCode */

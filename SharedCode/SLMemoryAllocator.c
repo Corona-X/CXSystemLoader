@@ -1,26 +1,26 @@
-#include <SystemLoader/SLMemoryAllocator.h>
 #include <SystemLoader/EFI/SLBootServices.h>
+#include <SystemLoader/SLMemoryAllocator.h>
+#include <SystemLoader/SLBasicDebug.h>
+#include <SystemLoader/SLBasicIO.h>
 #include <SystemLoader/SLLibrary.h>
 #include <System/OSByteMacros.h>
-#include <Kernel/XKShared.h>
+#include <Kernel/C/XKMemory.h>
 
 #if kCXBuildDev
-    #include <SystemLoader/SLDebug.h>
-
-    static OSCount gSLMemoryAllocationCount = 0;
-    static OSCount gSLMemoryFreeCount = 0;
+    OSCount gSLMemoryAllocationCount = 0;
+    OSCount gSLMemoryFreeCount = 0;
 #endif
 
 static bool gSLAllocatorInitialized = false;
 
-static SLMemoryPool gSLPoolInfo = {
+SLMemoryPool gSLPoolInfo = {
     .address = kOSNullPointer,
     .size = 0,
     .usedSize = 0,
     .head = kOSNullPointer
 };
 
-static SLHeap gSLCurrentHeap = {
+SLHeap gSLCurrentHeap = {
     .baseAddress = kOSNullPointer,
     .currentSize = 0,
     .maxSize = 0,
@@ -32,11 +32,6 @@ OSPrivate OSAddress SLAllocateInPool(SLMemoryPool *pool, OSSize size);
 OSPrivate void SLExpandPool(SLMemoryPool *pool, OSCount moreBytes, OSAddress base);
 OSPrivate void SLFreeInPool(SLMemoryPool *pool, OSBuffer object);
 OSPrivate OSAddress SLExpandHeap(OSCount moreBytes);
-
-void SLMemoryAllocatorOnBootServicesTerminate(SLMemoryMap *finalMemoryMap, OSAddress context)
-{
-    gSLCurrentHeap.shouldFree = false;
-}
 
 OSBuffer SLMemoryAllocatorInit(void)
 {
@@ -50,8 +45,10 @@ OSBuffer SLMemoryAllocatorInit(void)
         gSLCurrentHeap.shouldFree = true;
     } else {
         #if kCXBuildDev
-            SLEarlyPrint("Error: Heap buffer allocation failed! (%s in %s)\n", __func__, __FILE__);
-            SLEarlyPrint("This Error is unrecoverable.\n");
+            SLPrintString("Error: Heap buffer allocation failed! (%s in %s)\n", __func__, __FILE__);
+            SLPrintString("This Error is unrecoverable.\n");
+        #else
+            SLPrintString("Error: Heap allocation failed! [%d]\n", __LINE__);
         #endif /* kCXBuildDev */
 
         SLUnrecoverableError();
@@ -60,11 +57,7 @@ OSBuffer SLMemoryAllocatorInit(void)
     OSBuffer heapBuffer = SLMemoryAllocatorGetHeap();
 
     if (!OSBufferIsEmpty(heapBuffer))
-    {
         gSLAllocatorInitialized = true;
-
-        SLBootServicesRegisterTerminationFunction(SLMemoryAllocatorOnBootServicesTerminate, kOSNullPointer);
-    }
 
     return heapBuffer;
 }
@@ -170,7 +163,7 @@ void SLFreeInPool(SLMemoryPool *pool, OSBuffer object)
             if (end > node)
             {
                 // Something bad happened...
-                XKLog(kXKLogLevelError, kXKLogSubsystemLoader "Memory List is Corrupted! [0x%d]", __LINE__);
+                SLPrintString("Memory List is Corrupted! [%d]\n", __LINE__);
                 SLUnrecoverableError();
             }
 
@@ -201,12 +194,11 @@ void SLFreeInPool(SLMemoryPool *pool, OSBuffer object)
         if (object.address < (OSAddress)(((UInt8 *)node) + node->size))
         {
             // Something bad happened again...
-            XKLog(kXKLogLevelError, kXKLogSubsystemLoader "Memory List is Corrupted! [0x%d]", __LINE__);
+            SLPrintString("Memory List is Corrupted! [%d]\n", __LINE__);
 
             #if kCXBuildDev
-                XKLog(kXKLogLevelVerbose, kXKLogSubsystemLoader
-                      "Note: Tried to free {%zu from %p} on node {%zu from %p}",
-                      object.size, object.address, node->size, node);
+                SLPrintString("Note: Tried to free {%zu from %p} on node {%zu from %p}\n",
+                              object.size, object.address, node->size, node);
 
                 SLMemoryAllocatorDumpHeapInfo();
                 SLMemoryAllocatorDumpMainPool();
@@ -263,7 +255,7 @@ OSBuffer SLAllocate(OSSize size)
 
         if (!buffer.address)
         {
-            XKLog(kXKLogLevelWarning, kXKLogSubsystemLoader "Out of Memory!");
+            SLPrintString("Out of Memory!\n");
 
             return kOSBufferEmpty;
         }
@@ -286,10 +278,10 @@ OSBuffer SLReallocate(OSAddress object, OSSize newSize)
 {
     if (!SLDoesOwnMemory(object))
     {
-        XKLog(kXKLogLevelError, kXKLogSubsystemLoader "SLReallocate() on object not inside pool!");
+        SLPrintString("SLReallocate() on object not inside pool!\n");
 
         #if kCXBuildDev
-            XKLog(kXKLogLevelVerbose, kXKLogSubsystemLoader "Object: %p, Requested Size: %zu", object, newSize);
+            SLPrintString("Object: %p, Requested Size: %zu\n", object, newSize);
         #endif /* kCXBuildDev */
 
         return kOSBufferEmpty;
@@ -321,17 +313,13 @@ void SLFree(OSAddress object)
 
     if (!SLDoesOwnMemory(object))
     {
-        XKLog(kXKLogLevelError, kXKLogSubsystemLoader "SLFree() on object not inside pool!"
-              "(Has the current pool changed since this object was allocated?)");
+        SLPrintString("SLFree() on object not inside pool! (Has the current pool changed since this object was allocated?)\n");
 
         #if kCXBuildDev
-            OSUTF8Char *string = XKBufferToString(&buffer);
+            SLPrintString("Object: {%u bytes @ %p}\n", buffer.size, buffer.address);
 
-            XKLog(kXKLogLevelVerbose, kXKLogSubsystemLoader "Object: %s\n", string);
             SLMemoryAllocatorDumpHeapInfo();
             SLMemoryAllocatorDumpMainPool();
-
-            SLFree(string);
         #endif /* kCXBuildDev */
 
         return;

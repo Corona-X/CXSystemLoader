@@ -48,7 +48,13 @@ typedef struct {
     OSPrivate void SLFreeBuffer(OSBuffer buffer);
     OSPrivate void SLFree(OSAddress object);
 
+    OSExport SLMemoryPool gSLPoolInfo;
+    OSExport SLHeap gSLCurrentHeap;
+
     #if kCXBuildDev
+        OSExport OSCount gSLMemoryAllocationCount;
+        OSExport OSCount gSLMemoryFreeCount;
+
         OSPrivate SLMemoryPool *SLMemoryAllocatorGetMainPool(void);
         OSPrivate SLHeap *SLMemoryAllocatorGetHeapInfo(void);
 

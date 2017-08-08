@@ -4,14 +4,13 @@
 /* beeselmane - 9.10.2016  - 12:00 AM EST                          */
 /**=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=**/
 
-#ifndef __SYSTEMLOADER_SLSYSTEMTABLE__
-#define __SYSTEMLOADER_SLSYSTEMTABLE__ 1
+#ifndef __SYSTEMLOADER_EFI_SLSYSTEMTABLE__
+#define __SYSTEMLOADER_EFI_SLSYSTEMTABLE__ 1
 
 #include <Corona-X.h>
 #include <SystemLoader/SLBase.h>
 #include <SystemLoader/EFI/SLRuntimeServices.h>
 #include <SystemLoader/EFI/SLBootServices.h>
-#include <Kernel/CoreDriver/ACPI/CorePower.h>
 
 #if !kCXAssemblyCode
 
@@ -36,9 +35,9 @@ typedef struct {
 
 #if kCXBootloaderCode
     OSPrivate SLSystemTable *SLSystemTableGetCurrent(void);
-    OSPrivate CPRootDescriptor *SLSystemTableGetACPIRoot(SLSystemTable *table);
+    //OSPrivate CPRootDescriptor *SLSystemTableGetACPIRoot(SLSystemTable *table);
 #endif /* kCXBootloaderCode */
 
 #endif /* !kCXAssemblyCode */
 
-#endif /* !defined(__SYSTEMLOADER_SLSYSTEMTABLE__) */
+#endif /* !defined(__SYSTEMLOADER_EFI_SLSYSTEMTABLE__) */
