@@ -138,12 +138,12 @@ SLMemoryMap *SLBootServicesTerminate(void)
     SLStatus status = SLBootServicesGetCurrent()->terminate(SLGetMainImageHandle(), finalMemoryMap->key);
 
     if (SLStatusIsError(status)) {
-        XKPrintString(" [Failed]\n");
+        // XKPrintString(" [Failed]\n");
         SLFree(finalMemoryMap);
 
         return kOSNullPointer;
     } else {
-        XKPrintString(" [Success]\n");
+        // XKPrintString(" [Success]\n");
         gSLBootServicesEnabled = false;
 
         return finalMemoryMap;

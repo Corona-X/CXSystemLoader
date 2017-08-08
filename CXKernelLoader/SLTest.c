@@ -2,6 +2,8 @@
 #include <SystemLoader/SLDebug.h>
 #include <Kernel/XKShared.h>
 
+#if 0
+
 #if kCXBuildDev
 
 bool SLTestFormattedPrint(void)
@@ -208,3 +210,5 @@ void SLRunTests(void)
 }
 
 #endif /* kCXBuildDev */
+
+#endif

@@ -11,12 +11,14 @@
 #include <SystemLoader/SLBase.h>
 #include <SystemLoader/EFI/SLSystemTable.h>
 
+#define kSLLoaderSystemName      "Corona-X"
 #define kSLLoaderVersionString   "A.1"
-#define kSLLoaderBuildString     "0045"
+#define kSLLoaderBuildString     "0047"
 
-#define kSLLoaderWelcomeString   "Corona-X System Loader Version " kSLLoaderVersionString " [Build " kSLLoaderBuildString "]\r\n"
-#define kSLLoaderDataDirectory   "/EFI/corona"
-#define kSLLoaderConfigFile      "SLConfigFile"
+#define kSLLoaderWelcomeString      kSLLoaderSystemName " System Loader Version " kSLLoaderVersionString " [Build " kSLLoaderBuildString "]\r\n"
+#define kSLLoaderBootArchivePath    "/boot/BootX.car"
+#define kSLLoaderDataDirectory      "/EFI/corona"
+#define kSLLoaderConfigFile         "SLConfigFile"
 
 #if kCXBootloaderCode && !kCXAssemblyCode
     OSPrivate SLStatus CXSystemLoaderMain(OSAddress imageHandle, SLSystemTable *systemTable);

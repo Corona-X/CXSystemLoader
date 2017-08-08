@@ -11,7 +11,7 @@
 #include <System/OSTypes.h>
 #include <System/OSUID.h>
 #include <System/OSCompilerMacros.h>
-#include <Kernel/XKLog.h>
+#include <Kernel/Shared/XKLog.h>
 
 #define kSLACPITableID                  ((SLProtocol){0x8868E871, 0xE4F1, 0x11D3, {0xBC, 0x22, 0x00, 0x80, 0xC7, 0x3C, 0x88, 0x81}})
 #define kSLGraphicsOutputProtocol       ((SLProtocol){0x9042A9DE, 0x23DC, 0x4A38, {0x96, 0xFB, 0x7A, 0xDE, 0xD0, 0x80, 0x51, 0x6A}})

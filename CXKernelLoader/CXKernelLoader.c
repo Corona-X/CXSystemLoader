@@ -1,0 +1,4 @@
+void CXSystemLoaderMain(void)
+{
+    for ( ; ; ) ;
+}
