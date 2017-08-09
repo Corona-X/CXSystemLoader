@@ -1,8 +1,20 @@
+#include <SystemLoader/SLLibrary.h>
+#include <SystemLoader/SLBase.h>
+
 extern void CXKernelLoaderMain(void);
 
 void CXKernelLoaderMain(void)
 {
-    for ( ; ; ) ;
+    SLPrintString("Entered CXKernelLoader!\n");
+
+    // Okay okay okay. So this *should* not return.
+    // HOWEVER, for debugging purposes, this returns.
+    return;
+}
+
+void SLLeave(OSUnused SLStatus status)
+{
+    OSFault();
 }
 
 #if 0

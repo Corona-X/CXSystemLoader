@@ -136,6 +136,37 @@ SLMemoryMap *SLBootServicesTerminate(void)
     }
 }
 
+OSAddress *SLBootServicesLocateHandles(SLProtocol protocol, OSCount *count)
+{
+    SLBootServicesCheck(kOSNullPointer);
+
+    SLBootServices *bootServices = SLBootServicesGetCurrent();
+    OSAddress *devices = kOSNullPointer;
+    OSCount handleCount;
+
+    SLStatus status = bootServices->localeHandles(kSLSearchTypeByProtocol, &protocol, kOSNullPointer, &handleCount, &devices);
+    if (SLStatusIsError(status)) return kOSNullPointer;
+
+    OSAddress *results = SLAllocate(handleCount * sizeof(OSAddress));
+    if (!results) goto fail;
+
+    for (OSCount i = 0; i < handleCount; i++)
+    {
+        status = bootServices->handleProtocol(devices[i], &protocol, &results[i]);
+        if (SLStatusIsError(status)) goto fail;
+    }
+
+    if (!SLBootServicesFree(devices)) goto fail;
+    if (count) (*count) = handleCount;
+    return results;
+
+fail:
+    if (results) SLFree(results);
+    SLBootServicesFree(devices);
+
+    return kOSNullPointer;
+}
+
 OSAddress SLBootServicesLocateProtocol(SLProtocol protocol)
 {
     SLBootServicesCheck(kOSNullPointer);

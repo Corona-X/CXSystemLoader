@@ -194,7 +194,8 @@ void SLPrintString(OSUnused const OSUTF8Char *format, ...)
             case 'c': {
                 inEscapeCode = false;
 
-                SLPrintCharacter(c);
+                OSUTF8Char character = OSVAGetNext(args, UInt32);
+                SLPrintCharacter(character);
             } break;
             case 's': {
                 const OSUTF8Char *string = OSVAGetNext(args, OSUTF8Char *);

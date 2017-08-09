@@ -5,34 +5,7 @@
 
 SLGraphicsOutput **SLGraphicsOutputGetAll(OSCount *count)
 {
-    SLBootServicesCheck(kOSNullPointer);
-
-    SLBootServices *bootServices = SLBootServicesGetCurrent();
-    SLProtocol protocol = kSLGraphicsOutputProtocol;
-    OSAddress *devices = kOSNullPointer;
-    OSCount screenCount;
-
-    SLStatus status = bootServices->localeHandles(kSLSearchTypeByProtocol, &protocol, kOSNullPointer, &screenCount, &devices);
-    if (SLStatusIsError(status)) return kOSNullPointer;
-
-    SLGraphicsOutput **results = SLAllocate(screenCount * sizeof(SLGraphicsOutput *));
-    if (!results) goto fail;
-
-    for (OSCount i = 0; i < screenCount; i++)
-    {
-        status = bootServices->handleProtocol(devices[i], &protocol, &results[i]);
-        if (SLStatusIsError(status)) goto fail;
-    }
-
-    if (!SLBootServicesFree(devices)) goto fail;
-    if (count) (*count) = screenCount;
-    return results;
-
-fail:
-    if (results) SLFree(results);
-    SLBootServicesFree(devices);
-
-    return kOSNullPointer;
+    return SLBootServicesLocateHandles(kSLGraphicsOutputProtocol, count);
 }
 
 SLGraphicsModeInfo *SLGraphicsOutputGetMode(SLGraphicsOutput *graphics, UInt32 modeNumber)

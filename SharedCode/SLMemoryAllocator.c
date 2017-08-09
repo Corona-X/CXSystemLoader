@@ -68,7 +68,7 @@ void SLMemoryAllocatorSetHeap(OSAddress newHeap, OSSize newSize)
     if (gSLCurrentHeap.shouldFree)
         SLBootServicesFreePages(gSLCurrentHeap.baseAddress, gSLCurrentHeap.currentSize / kSLBootPageSize);
 
-    if (!newHeap)
+    if (newHeap)
     {
         gSLCurrentHeap.baseAddress = OSAlignUpward((UInt64)newHeap, kSLMemoryAllocatorPoolAlignment);
         gSLCurrentHeap.maxSize = newSize;

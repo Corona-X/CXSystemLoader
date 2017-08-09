@@ -100,10 +100,10 @@ XKDeclareFunction(SLLeave):
         // Return to the address given by the firmware
         // on the initial program stack (saved in entry)
         XKLoadSymbol(gSLFirmwareReturnAddress, %rbx)
-        movq (%rbx), %rax                                       // Load return address into accumulator
-        popq %rcx                                               // Kill real return address on the stack
-        pushq (%rax)                                            // Inject firmware return address
-        ret                                                     // Return to given address
+        movq (%rbx), %rax                                   // Load return address into accumulator
+        popq %rcx                                           // Kill real return address on the stack
+        pushq (%rax)                                        // Inject firmware return address
+        ret                                                 // Return to given address
 
 .comm XKSymbol(gSLFirmwareReturnAddress), 8, 8
 .comm XKSymbol(gSLLoaderSystemTable),     8, 8
