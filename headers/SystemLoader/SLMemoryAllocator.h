@@ -33,19 +33,21 @@ typedef struct {
     OSSize currentSize;
     OSSize maxSize;
 
+    bool initialized;
     bool shouldFree;
 } SLHeap;
 
 #if kCXBootloaderCode
-    OSPrivate OSBuffer SLMemoryAllocatorInit(void);
-    OSPrivate void SLMemoryAllocatorSetHeap(OSBuffer heap);
+    OSPrivate OSAddress SLMemoryAllocatorInit(void);
+    OSPrivate void SLMemoryAllocatorSetHeap(OSAddress heap, OSSize newSize);
     OSPrivate OSSize SLMemoryAllocatorGetCurrentHeapSize(void);
-    OSPrivate OSBuffer SLMemoryAllocatorGetHeap(void);
+    OSPrivate OSAddress SLMemoryAllocatorGetHeapAddress(void);
+    OSPrivate OSSize SLMemoryAllocatorGetHeapSize(void);
 
+    OSPrivate OSSize SLGetObjectSize(OSAddress object);
     OSPrivate bool SLDoesOwnMemory(OSAddress object);
-    OSPrivate OSBuffer SLAllocate(OSSize size);
-    OSPrivate OSBuffer SLReallocate(OSAddress object, OSSize newSize);
-    OSPrivate void SLFreeBuffer(OSBuffer buffer);
+    OSPrivate OSAddress SLAllocate(OSSize size);
+    OSPrivate OSAddress SLReallocate(OSAddress object, OSSize newSize);
     OSPrivate void SLFree(OSAddress object);
 
     OSExport SLMemoryPool gSLPoolInfo;
@@ -54,12 +56,6 @@ typedef struct {
     #if kCXBuildDev
         OSExport OSCount gSLMemoryAllocationCount;
         OSExport OSCount gSLMemoryFreeCount;
-
-        OSPrivate SLMemoryPool *SLMemoryAllocatorGetMainPool(void);
-        OSPrivate SLHeap *SLMemoryAllocatorGetHeapInfo(void);
-
-        OSPrivate OSCount SLMemoryAllocatorGetAllocCount(void);
-        OSPrivate OSCount SLMemoryAllocatorGetFreeCount(void);
     #endif /* kCXBuildDev */
 #endif /* kCXBootloaderCode */
 

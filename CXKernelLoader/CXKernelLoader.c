@@ -10,9 +10,11 @@ void CXKernelLoaderMain(void)
 In this section is pieces of code which have been removed from CXSystemLoader.
 They must be reimplemented properly into the kernel loader.
 
-From SLMemoryAllocator.h:
+From SLMemoryAllocator.c:
 
 // On allocator initialization:
+OSPrivate void SLMemoryAllocatorOnBootServicesTerminate(SLMemoryMap *finalMemoryMap, OSAddress context);
+
 SLBootServicesRegisterTerminationFunction(SLMemoryAllocatorOnBootServicesTerminate, kOSNullPointer);
 
 void SLMemoryAllocatorOnBootServicesTerminate(OSUnused SLMemoryMap *finalMemoryMap, OSUnused OSAddress context)
@@ -21,6 +23,8 @@ void SLMemoryAllocatorOnBootServicesTerminate(OSUnused SLMemoryMap *finalMemoryM
 }
 
 From EFI/SLSystemTable.c:
+
+OSPrivate CPRootDescriptor *SLSystemTableGetACPIRoot(SLSystemTable *table);
 
 CPRootDescriptor *SLSystemTableGetACPIRoot(SLSystemTable *table)
 {
@@ -43,6 +47,9 @@ CPRootDescriptor *SLSystemTableGetACPIRoot(SLSystemTable *table)
 }
 
 From EFI/SLGraphics.c:
+
+OSPrivate XKGraphicsContext *SLGraphicsOutputGetContext(SLGraphicsOutput *graphics);
+OSPrivate XKGraphicsContext *SLGraphicsOutputGetContextWithMaxSize(SLGraphicsOutput *graphics, UInt32 maxHeight, UInt32 maxWidth);
 
 XKGraphicsContext *SLGraphicsOutputGetContext(SLGraphicsOutput *graphics)
 {
@@ -111,6 +118,8 @@ XKGraphicsContext *SLGraphicsOutputGetContextWithMaxSize(SLGraphicsOutput *graph
 }
 
 From EFI/SLBootServices.c:
+
+OSPrivate void SLBootServicesRegisterTerminationFunction(void (*function)(SLMemoryMap *finalMap, OSAddress context), OSAddress context);
 
 typedef struct __SLBootServicesTerminateHandler {
     void (*function)(SLMemoryMap *finalMap, OSAddress context);

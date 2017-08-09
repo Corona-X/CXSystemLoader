@@ -19,14 +19,6 @@
 //OSPrivate void SLDumpDebugState(XKProcessorDebugState *state);
 //OSPrivate void SLDumpProcessorState(bool standard, bool system, bool debug);
 
-//OSPrivate void __XKBitmapFontInitialize(void);
-//OSPrivate void __XKInputConsoleInitAllEFI(void);
-//OSPrivate void __XKSerialConsoleInitAll(void);
-//OSPrivate void __XKVideoConsoleInitAll(void);
-//OSPrivate void __SLLibraryInitialize(void);
-
-//OSPrivate void SLDumpConsoles(void);
-
 OSPrivate void SLMemoryAllocatorDumpMainPool(void);
 OSPrivate void SLMemoryAllocatorDumpHeapInfo(void);
 

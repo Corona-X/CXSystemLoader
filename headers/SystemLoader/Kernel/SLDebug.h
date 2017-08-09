@@ -4,8 +4,8 @@
 /* beeselmane -  4.15.2017 -  2:30 PM PST                          */
 /**=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=**/
 
-#ifndef __SYSTEMLOADER_SLDEBUG__
-#define __SYSTEMLOADER_SLDEBUG__ 1
+#ifndef __SYSTEMLOADER_KERNEL_SLDEBUG__
+#define __SYSTEMLOADER_KERNEL_SLDEBUG__ 1
 
 #include <Corona-X.h>
 #include <System/OSTypes.h>
@@ -30,11 +30,8 @@ OSPrivate void __SLLibraryInitialize(void);
 
 OSPrivate void SLDumpConsoles(void);
 
-OSPrivate void SLMemoryAllocatorDumpMainPool(void);
-OSPrivate void SLMemoryAllocatorDumpHeapInfo(void);
-
 OSPrivate bool SLGraphicsOutputDumpInfo(void);
 
 OSPrivate void SLSystemTableDumpConfigTables(SLSystemTable *table);
 
-#endif /* !defined(__SYSTEMLOADER_SLDEBUG__) */
+#endif /* !defined(__SYSTEMLOADER_KERNEL_SLDEBUG__) */

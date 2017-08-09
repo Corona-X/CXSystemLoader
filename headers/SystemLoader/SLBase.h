@@ -47,7 +47,7 @@
 #endif /* kCXBuildDev */
 
 typedef OSUIDIntelData SLProtocol;
-typedef UIntN SLStatus;
+typedef UInt64 SLStatus;
 
 typedef struct {
     UInt64 signature;

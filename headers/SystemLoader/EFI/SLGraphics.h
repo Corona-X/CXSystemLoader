@@ -4,19 +4,19 @@
 /* beeselmane - 30.10.2016 - 12:00 AM EST                          */
 /**=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=**/
 
-#ifndef __SYSTEMLOADER_SLGRAPHICS__
-#define __SYSTEMLOADER_SLGRAPHICS__ 1
+#ifndef __SYSTEMLOADER_EFI_SLGRAPHICS__
+#define __SYSTEMLOADER_EFI_SLGRAPHICS__ 1
 
 #include <Corona-X.h>
 #include <SystemLoader/SLBase.h>
 
 #if !kCXAssemblyCode
 
-typedef enum {
-    kSLGraphicsPixelFormatRGBX8,
-    kSLGraphicsPixelFormatBGRX8,
-    kSLGraphicsPixelFormatBitMask,
-    kSLGraphicsPixelFormatBLT
+typedef OSEnum(UInt32) {
+    kSLGraphicsPixelFormatRGBX8     = 0,
+    kSLGraphicsPixelFormatBGRX8     = 1,
+    kSLGraphicsPixelFormatBitMask   = 2,
+    kSLGraphicsPixelFormatBLT       = 3
 } SLGraphicsPixelFormat;
 
 typedef struct {
@@ -27,27 +27,27 @@ typedef struct {
 } SLGraphicsPixelMask;
 
 typedef struct {
-    UInt32 version;
-    UInt32 width;
-    UInt32 height;
-    SLGraphicsPixelFormat format;
-    SLGraphicsPixelMask pixelInfo;
-    UInt32 pixelsPerScanline;
+    UInt32                  version;
+    UInt32                  width;
+    UInt32                  height;
+    SLGraphicsPixelFormat   format;
+    SLGraphicsPixelMask     pixelInfo;
+    UInt32                  pixelsPerScanline;
 } SLGraphicsModeInfo;
 
 typedef struct {
-    UInt32 numberOfModes;
-    UInt32 currentMode;
-    SLGraphicsModeInfo *info;
-    UIntN infoSize;
-    OSAddress framebuffer;
-    UIntN framebufferSize;
+    UInt32                  numberOfModes;
+    UInt32                  currentMode;
+    SLGraphicsModeInfo      *info;
+    OSSize                  infoSize;
+    OSAddress               framebuffer;
+    OSSize                  framebufferSize;
 } SLGraphicsMode;
 
 typedef struct {
-    SLABI SLStatus (*getMode)(OSAddress this, UInt32 number, UIntN *infoSize, SLGraphicsModeInfo **info);
+    SLABI SLStatus (*getMode)(OSAddress this, UInt32 number, OSSize *infoSize, SLGraphicsModeInfo **info);
     SLABI SLStatus (*setMode)(OSAddress this, UInt32 number);
-    OSAddress blockTransfer;
+    OSAddress       blockTransfer;
     SLGraphicsMode *mode;
 } SLGraphicsOutput;
 
@@ -55,11 +55,8 @@ typedef struct {
     OSPrivate SLGraphicsOutput **SLGraphicsOutputGetAll(OSCount *count);
     OSPrivate SLGraphicsModeInfo *SLGraphicsOutputGetMode(SLGraphicsOutput *graphics, UInt32 modeNumber);
     OSPrivate SLGraphicsMode *SLGraphicsOutputGetCurrentMode(SLGraphicsOutput *graphics);
-
-    //OSPrivate XKGraphicsContext *SLGraphicsOutputGetContext(SLGraphicsOutput *graphics);
-    //OSPrivate XKGraphicsContext *SLGraphicsOutputGetContextWithMaxSize(SLGraphicsOutput *graphics, UInt32 maxHeight, UInt32 maxWidth);
 #endif /* kCXBootloaderCode */
 
 #endif /* !kCXAssemblyCode */
 
-#endif /* !defined(__SYSTEMLOADER_SLGRAPHICS__) */
+#endif /* !defined(__SYSTEMLOADER_EFI_SLGRAPHICS__) */

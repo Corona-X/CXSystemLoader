@@ -6,12 +6,11 @@
 #include <System/OSByteMacros.h>
 #include <Kernel/C/XKMemory.h>
 
-#if kCXBuildDev
-    OSCount gSLMemoryAllocationCount = 0;
-    OSCount gSLMemoryFreeCount = 0;
-#endif
+OSPrivate void SLExpandPool(SLMemoryPool *pool, OSCount moreBytes, OSAddress base);
+OSPrivate OSAddress SLExpandHeap(OSCount moreBytes);
 
-static bool gSLAllocatorInitialized = false;
+OSPrivate OSAddress SLAllocateInPool(SLMemoryPool *pool, OSSize size);
+OSPrivate void SLFreeInPool(SLMemoryPool *pool, OSAddress object, OSSize objectSize);
 
 SLMemoryPool gSLPoolInfo = {
     .address = kOSNullPointer,
@@ -24,24 +23,27 @@ SLHeap gSLCurrentHeap = {
     .baseAddress = kOSNullPointer,
     .currentSize = 0,
     .maxSize = 0,
-    .shouldFree = kOSNullPointer
+    .initialized = false,
+    .shouldFree = false,
 };
 
-OSPrivate void SLMemoryAllocatorOnBootServicesTerminate(SLMemoryMap *finalMemoryMap, OSAddress context);
-OSPrivate OSAddress SLAllocateInPool(SLMemoryPool *pool, OSSize size);
-OSPrivate void SLExpandPool(SLMemoryPool *pool, OSCount moreBytes, OSAddress base);
-OSPrivate void SLFreeInPool(SLMemoryPool *pool, OSBuffer object);
-OSPrivate OSAddress SLExpandHeap(OSCount moreBytes);
+#if kCXBuildDev
+    OSCount gSLMemoryAllocationCount = 0;
+    OSCount gSLMemoryFreeCount = 0;
+#endif /* kCXBuildDev */
 
-OSBuffer SLMemoryAllocatorInit(void)
+#pragma mark - Allocator Functions
+
+OSAddress SLMemoryAllocatorInit(void)
 {
-    if (gSLAllocatorInitialized) return SLMemoryAllocatorGetHeap();
+    if (gSLCurrentHeap.initialized)
+        return SLMemoryAllocatorGetHeapAddress();
 
-    OSBuffer newHeap = SLBootServicesAllocateAnyPages(kSLMemoryAllocatorDefaultPoolSize / kSLBootPageSize);
+    OSSize newHeapSize = kSLMemoryAllocatorDefaultPoolSize / kSLBootPageSize;
+    OSAddress newHeap = SLBootServicesAllocateAnyPages(newHeapSize);
 
-    if (!OSBufferIsEmpty(newHeap)) {
-        SLMemoryAllocatorSetHeap(newHeap);
-
+    if (newHeap) {
+        SLMemoryAllocatorSetHeap(newHeap, newHeapSize);
         gSLCurrentHeap.shouldFree = true;
     } else {
         #if kCXBuildDev
@@ -54,23 +56,22 @@ OSBuffer SLMemoryAllocatorInit(void)
         SLUnrecoverableError();
     }
 
-    OSBuffer heapBuffer = SLMemoryAllocatorGetHeap();
-
-    if (!OSBufferIsEmpty(heapBuffer))
-        gSLAllocatorInitialized = true;
-
-    return heapBuffer;
+    OSAddress heap = SLMemoryAllocatorGetHeapAddress();
+    if (heap) gSLCurrentHeap.initialized = true;
+    return heap;
 }
 
-void SLMemoryAllocatorSetHeap(OSBuffer newHeap)
+#pragma mark - Heap Functions
+
+void SLMemoryAllocatorSetHeap(OSAddress newHeap, OSSize newSize)
 {
     if (gSLCurrentHeap.shouldFree)
-        SLBootServicesFree(SLMemoryAllocatorGetHeap().address);
+        SLBootServicesFreePages(gSLCurrentHeap.baseAddress, gSLCurrentHeap.currentSize / kSLBootPageSize);
 
-    if (!OSBufferIsEmpty(newHeap))
+    if (!newHeap)
     {
-        gSLCurrentHeap.baseAddress = OSAlignUpward((UIntN)newHeap.address, kSLMemoryAllocatorPoolAlignment);
-        gSLCurrentHeap.maxSize = newHeap.size;
+        gSLCurrentHeap.baseAddress = OSAlignUpward((UInt64)newHeap, kSLMemoryAllocatorPoolAlignment);
+        gSLCurrentHeap.maxSize = newSize;
         gSLCurrentHeap.currentSize = 0;
     }
 }
@@ -80,9 +81,14 @@ OSSize SLMemoryAllocatorGetCurrentHeapSize(void)
     return gSLCurrentHeap.currentSize;
 }
 
-OSBuffer SLMemoryAllocatorGetHeap(void)
+OSAddress SLMemoryAllocatorGetHeapAddress(void)
 {
-    return OSBufferMake(gSLCurrentHeap.baseAddress, gSLCurrentHeap.maxSize);
+    return gSLCurrentHeap.baseAddress;
+}
+
+OSSize SLMemoryAllocatorGetHeapSize(void)
+{
+    return gSLCurrentHeap.maxSize;
 }
 
 OSAddress SLExpandHeap(OSCount moreBytes)
@@ -98,6 +104,8 @@ OSAddress SLExpandHeap(OSCount moreBytes)
 
     return kOSNullPointer;
 }
+
+#pragma mark - Pool Functions
 
 OSAddress SLAllocateInPool(SLMemoryPool *pool, OSSize size)
 {
@@ -135,30 +143,19 @@ OSAddress SLAllocateInPool(SLMemoryPool *pool, OSSize size)
     return kOSNullPointer;
 }
 
-void SLExpandPool(SLMemoryPool *pool, OSCount moreBytes, OSAddress base)
+void SLFreeInPool(SLMemoryPool *pool, OSAddress object, OSSize objectSize)
 {
-    if (!pool->size) {
-        pool->usedSize = pool->size = moreBytes;
-        pool->address = base;
-    } else {
-        pool->usedSize += moreBytes;
-        pool->size += moreBytes;
-    }
-}
-
-void SLFreeInPool(SLMemoryPool *pool, OSBuffer object)
-{
-    pool->usedSize -= object.size;
+    pool->usedSize -= objectSize;
 
     SLMemoryNode **ref = &pool->head;
     SLMemoryNode *node;
 
     while ((node = (*ref)))
     {
-        if (object.address <= (OSAddress)node)
+        if (object <= (OSAddress)node)
         {
-            SLMemoryNode *end = object.address + object.size;
-            SLMemoryNode *freeNode = object.address;
+            SLMemoryNode *end = object + objectSize;
+            SLMemoryNode *freeNode = object;
 
             if (end > node)
             {
@@ -168,10 +165,10 @@ void SLFreeInPool(SLMemoryPool *pool, OSBuffer object)
             }
 
             if (end == node) {
-                freeNode->size = object.size + node->size;
+                freeNode->size = objectSize + node->size;
                 freeNode->next = node->next;
             } else {
-                freeNode->size = object.size;
+                freeNode->size = objectSize;
                 freeNode->next = node;
             }
 
@@ -181,7 +178,7 @@ void SLFreeInPool(SLMemoryPool *pool, OSBuffer object)
             {
                 SLMemoryNode *refNode = (SLMemoryNode *)ref;
 
-                if ((((UInt8 *)ref) + refNode->size) == object.address)
+                if ((((UInt8 *)ref) + refNode->size) == object)
                 {
                     refNode->size += node->size;
                     refNode->next = node->next;
@@ -191,14 +188,14 @@ void SLFreeInPool(SLMemoryPool *pool, OSBuffer object)
             return;
         }
 
-        if (object.address < (OSAddress)(((UInt8 *)node) + node->size))
+        if (object < (OSAddress)(((UInt8 *)node) + node->size))
         {
             // Something bad happened again...
             SLPrintString("Memory List is Corrupted! [%d]\n", __LINE__);
 
             #if kCXBuildDev
                 SLPrintString("Note: Tried to free {%zu from %p} on node {%zu from %p}\n",
-                              object.size, object.address, node->size, node);
+                              objectSize, object, node->size, node);
 
                 SLMemoryAllocatorDumpHeapInfo();
                 SLMemoryAllocatorDumpMainPool();
@@ -210,29 +207,49 @@ void SLFreeInPool(SLMemoryPool *pool, OSBuffer object)
         ref = &node->next;
     }
 
-    if ((ref == &pool->head) || ((((UInt8 *)ref) + ((SLMemoryNode *)ref)->size)) != object.address) {
-        SLMemoryNode *objectNode = (SLMemoryNode *)object.address;
+    if ((ref == &pool->head) || ((((UInt8 *)ref) + ((SLMemoryNode *)ref)->size)) != object) {
+        SLMemoryNode *objectNode = (SLMemoryNode *)object;
         objectNode->next = kOSNullPointer;
-        objectNode->size = object.size;
+        objectNode->size = objectSize;
 
         (*ref) = objectNode;
     } else {
         SLMemoryNode *refNode = (SLMemoryNode *)ref;
-        refNode->size += object.size;
+        refNode->size += objectSize;
     }
+}
+
+void SLExpandPool(SLMemoryPool *pool, OSCount moreBytes, OSAddress base)
+{
+    if (!pool->size) {
+        pool->usedSize = pool->size = moreBytes;
+        pool->address = base;
+    } else {
+        pool->usedSize += moreBytes;
+        pool->size += moreBytes;
+    }
+}
+
+#pragma mark - Base Functions
+
+OSSize SLGetObjectSize(OSAddress object)
+{
+    OSSize *sizePointer = object - sizeof(OSSize);
+    OSSize size = *sizePointer;
+
+    return size;
 }
 
 bool SLDoesOwnMemory(OSAddress object)
 {
-    OSSize *size = object; size--;
-    OSBuffer buffer = OSBufferMake(size, *size);
+    OSSize size = SLGetObjectSize(object);
 
-    return ((buffer.address >= gSLPoolInfo.address) && ((buffer.address + buffer.size) <= (gSLPoolInfo.address + gSLPoolInfo.size)));
+    return ((object >= gSLPoolInfo.address) && ((object + size) <= (gSLPoolInfo.address + gSLPoolInfo.size)));
 }
 
-OSBuffer SLAllocate(OSSize size)
+OSAddress SLAllocate(OSSize size)
 {
-    if (!size) return kOSBufferEmpty;
+    if (!size) return kOSNullPointer;
 
     OSSize allocSize = size + sizeof(OSSize);
     allocSize = OSAlignUpward(allocSize, kSLMemoryAllocatorAllocAlignment);
@@ -251,17 +268,16 @@ OSBuffer SLAllocate(OSSize size)
     while (!(result = SLAllocateInPool(&gSLPoolInfo, allocSize)))
     {
         OSCount extendCount = OSAlignUpward(allocSize, kSLBootPageSize);
-        OSBuffer buffer = OSBufferMake(SLExpandHeap(extendCount), extendCount);
+        OSAddress heapBase = SLExpandHeap(extendCount);
 
-        if (!buffer.address)
+        if (!heapBase)
         {
             SLPrintString("Out of Memory!\n");
-
-            return kOSBufferEmpty;
+            return kOSNullPointer;
         }
 
-        SLExpandPool(&gSLPoolInfo, extendCount, buffer.address);
-        SLFreeInPool(&gSLPoolInfo, buffer);
+        SLExpandPool(&gSLPoolInfo, extendCount, heapBase);
+        SLFreeInPool(&gSLPoolInfo, heapBase, extendCount);
     }
 
     (*((OSSize *)result)) = allocSize;
@@ -271,10 +287,10 @@ OSBuffer SLAllocate(OSSize size)
         gSLMemoryAllocationCount++;
     #endif
 
-    return OSBufferMake(result, allocSize - sizeof(OSSize));
+    return result;
 }
 
-OSBuffer SLReallocate(OSAddress object, OSSize newSize)
+OSAddress SLReallocate(OSAddress object, OSSize newSize)
 {
     if (!SLDoesOwnMemory(object))
     {
@@ -284,39 +300,34 @@ OSBuffer SLReallocate(OSAddress object, OSSize newSize)
             SLPrintString("Object: %p, Requested Size: %zu\n", object, newSize);
         #endif /* kCXBuildDev */
 
-        return kOSBufferEmpty;
+        return kOSNullPointer;
     }
 
-    OSSize *size = object; size--;
-    OSBuffer buffer = OSBufferMake(size, *size);
+    OSSize *sizePointer = object - sizeof(OSSize);
+    OSSize size = *sizePointer;
 
-    OSBuffer newBuffer = SLAllocate(newSize);
-    if (OSBufferIsEmpty(newBuffer)) return kOSBufferEmpty;
+    OSAddress newObject = SLAllocate(newSize);
+    if (!newObject) return kOSNullPointer;
 
-    XKMemoryCopy(object, newBuffer.address, buffer.size - sizeof(OSSize));
-    SLFreeInPool(&gSLPoolInfo, buffer);
+    XKMemoryCopy(object, newObject, size - sizeof(OSSize));
+    SLFreeInPool(&gSLPoolInfo, sizePointer, size);
 
-    return newBuffer;
-}
-
-void SLFreeBuffer(OSBuffer buffer)
-{
-    SLFree(buffer.address);
+    return newObject;
 }
 
 void SLFree(OSAddress object)
 {
     if (!object) return;
 
-    OSSize *size = object; size--;
-    OSBuffer buffer = OSBufferMake(size, *size);
+    OSSize *sizePointer = object - sizeof(OSSize);
+    OSSize size = *sizePointer;
 
     if (!SLDoesOwnMemory(object))
     {
         SLPrintString("SLFree() on object not inside pool! (Has the current pool changed since this object was allocated?)\n");
 
         #if kCXBuildDev
-            SLPrintString("Object: {%u bytes @ %p}\n", buffer.size, buffer.address);
+            SLPrintString("Object: {%u bytes @ %p}\n", size, sizePointer);
 
             SLMemoryAllocatorDumpHeapInfo();
             SLMemoryAllocatorDumpMainPool();
@@ -325,31 +336,9 @@ void SLFree(OSAddress object)
         return;
     }
 
-    SLFreeInPool(&gSLPoolInfo, buffer);
+    SLFreeInPool(&gSLPoolInfo, sizePointer, size);
 
     #if kCXBuildDev
         gSLMemoryFreeCount++;
     #endif
 }
-
-#if kCXBuildDev
-    SLMemoryPool *SLMemoryAllocatorGetMainPool(void)
-    {
-        return &gSLPoolInfo;
-    }
-
-    SLHeap *SLMemoryAllocatorGetHeapInfo(void)
-    {
-        return &gSLCurrentHeap;
-    }
-
-    OSCount SLMemoryAllocatorGetAllocCount(void)
-    {
-        return gSLMemoryAllocationCount;
-    }
-
-    OSCount SLMemoryAllocatorGetFreeCount(void)
-    {
-        return gSLMemoryFreeCount;
-    }
-#endif /* kCXBuildDev */

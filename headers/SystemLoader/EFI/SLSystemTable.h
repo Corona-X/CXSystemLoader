@@ -9,33 +9,35 @@
 
 #include <Corona-X.h>
 #include <SystemLoader/SLBase.h>
-#include <SystemLoader/EFI/SLRuntimeServices.h>
 #include <SystemLoader/EFI/SLBootServices.h>
+#include <SystemLoader/EFI/SLRuntimeServices.h>
+#include <SystemLoader/EFI/SLBootConsole.h>
 
 #if !kCXAssemblyCode
 
 typedef struct {
-    SLProtocol id;
-    OSAddress pointer;
+    SLProtocol  id;
+    OSAddress   pointer;
 } SLConfigTable;
 
 typedef struct {
-    SLTableHeader header;
-    UInt16 *firmwareVendor;
-    UInt32 firmwareRevision;
-    UInt32 padding;
-    OSAddress unused1;
-    SLSimpleTextInput *stdin;
-    OSAddress unused2[4];
-    SLRuntimeServices *runtimeServices;
-    SLBootServices *bootServices;
-    UIntN numberOfConfigTables;
-    SLConfigTable *configTables;
+    SLTableHeader       header;
+    OSUTF16Char         *firmwareVendor;
+    UInt32              firmwareRevision;
+    OSAddress           stdinHandle;
+    SLSimpleTextInput   *stdin;
+    OSAddress           stdoutHandle;
+    SLSimpleTextOutput  *stdout;
+    OSAddress           stderrHandle;
+    SLSimpleTextOutput  *stderr;
+    SLRuntimeServices   *runtimeServices;
+    SLBootServices      *bootServices;
+    UInt64              numberOfConfigTables;
+    SLConfigTable       *configTables;
 } SLSystemTable;
 
 #if kCXBootloaderCode
     OSPrivate SLSystemTable *SLSystemTableGetCurrent(void);
-    //OSPrivate CPRootDescriptor *SLSystemTableGetACPIRoot(SLSystemTable *table);
 #endif /* kCXBootloaderCode */
 
 #endif /* !kCXAssemblyCode */

@@ -18,7 +18,7 @@
 #if kCXBootloaderCode
     #define SLBootServicesCheck(e)                                                                          \
         do {                                                                                                \
-            if (SLBootServicesHaveTerminated())                                                             \
+            if (OSUnlikely(SLBootServicesHaveTerminated()))                                                 \
             {                                                                                               \
                 SLPrintString("Function %s called after Boot Services Terminated!\n", __func__);            \
                 return (e);                                                                                 \
@@ -28,7 +28,7 @@
     OSPrivate SLABI OSNoReturn void SLLeave(SLStatus status);
     OSPrivate OSAddress SLGetMainImageHandle(void);
     OSPrivate OSNoReturn void SLUnrecoverableError(void);
-    OSPrivate bool SLDelayProcessor(UIntN time, bool useBootServices);
+    OSPrivate bool SLDelayProcessor(UInt64 time);
 
     OSExport OSAddress gSLFirmwareReturnAddress;
     OSExport SLSystemTable *gSLLoaderSystemTable;

@@ -4,102 +4,123 @@
 /* beeselmane - 9.10.2016  - 11:15 AM EST                          */
 /**=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=**/
 
-#ifndef __SYSTEMLOADER_SLBOOTSERVICES__
-#define __SYSTEMLOADER_SLBOOTSERVICES__ 1
+#ifndef __SYSTEMLOADER_EFI_SLBOOTSERVICES__
+#define __SYSTEMLOADER_EFI_SLBOOTSERVICES__ 1
 
 #include <Corona-X.h>
 #include <SystemLoader/SLBase.h>
 
 #if !kCXAssemblyCode
 
-typedef enum {
-    kSLSearchTypeEverything,
-    kSLSearchTypeNextRegistered,
-    kSLSearchTypeByProtocol
+typedef OSEnum(UInt32) {
+    kSLSearchTypeEverything         = 0,
+    kSLSearchTypeNextRegistered     = 1,
+    kSLSearchTypeByProtocol         = 2
 } SLSearchType;
 
-typedef enum {
-    kSLAllocTypeAnyPages,
-    kSLAllocTypeMaxAddress,
-    kSLAllocTypeAtAddress
-} SLAllocType;
+typedef OSEnum(UInt32) {
+    kSLAllocTypeAnyPages            = 0,
+    kSLAllocTypeMaxAddress          = 1,
+    kSLAllocTypeAtAddress           = 2
+} SLAllocationType;
 
 typedef OSEnum(UInt32) {
-    kSLMemoryTypeReserved       = 0x0,
-    kSLMemoryTypeLoaderCode     = 0x1,
-    kSLMemoryTypeLoaderData     = 0x2,
-    kSLMemoryTypeBootCode       = 0x3,
-    kSLMemoryTypeBootData       = 0x4,
-    kSLMemoryTypeRuntimeCode    = 0x5,
-    kSLMemoryTypeRuntimeData    = 0x6,
-    kSLMemoryTypeFree           = 0x7,
-    kSLMemoryTypeUnusable       = 0x8,
-    kSLMemoryTypeACPIReclaim    = 0x9,
-    kSLMemoryTypeACPINVS        = 0xA,
-    kSLMemoryTypeMappedIO       = 0xB,
-    kSLMemoryTypeMappedIOPorts  = 0xC,
-    kSLMemoryTypePALCode        = 0xD,
-    kSLMemorytypePersistent     = 0xE
+    kSLMemoryTypeReserved           = 0x0,
+    kSLMemoryTypeLoaderCode         = 0x1,
+    kSLMemoryTypeLoaderData         = 0x2,
+    kSLMemoryTypeBootCode           = 0x3,
+    kSLMemoryTypeBootData           = 0x4,
+    kSLMemoryTypeRuntimeCode        = 0x5,
+    kSLMemoryTypeRuntimeData        = 0x6,
+    kSLMemoryTypeFree               = 0x7,
+    kSLMemoryTypeUnusable           = 0x8,
+    kSLMemoryTypeACPIReclaim        = 0x9,
+    kSLMemoryTypeACPINVS            = 0xA,
+    kSLMemoryTypeMappedIO           = 0xB,
+    kSLMemoryTypeMappedIOPorts      = 0xC,
+    kSLMemoryTypePALCode            = 0xD,
+    kSLMemorytypePersistent         = 0xE
 } SLMemoryType;
 
 typedef struct {
-    UInt32 entryType;
-    UInt32 padding0;
-    OSAddress physicalAddress;
-    OSAddress virtualAddress;
-    UInt64 pageCount;
-    UInt64 attributes;
-    UInt64 padding1;
+    UInt32              entryType;
+    OSAddress           physicalAddress;
+    OSAddress           virtualAddress;
+    OSCount             pageCount;
+    UInt64              attributes;
+    UInt64              padding;
 } SLMemoryDescriptor;
 
 typedef struct {
-    UIntN key;
-    OSCount entryCount;
-    SLMemoryDescriptor *entries;
+    UInt64              key;
+    OSCount             entryCount;
+    SLMemoryDescriptor  *entries;
 } SLMemoryMap;
 
 typedef struct {
-    UInt16 unused;
-    UInt16 keycode;
-} SLKeyPress;
-
-typedef struct {
-    SLABI SLStatus (*reset)(OSAddress this, bool extendedVerify);
-    SLABI SLStatus (*readKey)(OSAddress this, SLKeyPress *key);
-    OSAddress unused2;
-} SLSimpleTextInput;
-
-typedef struct {
     SLTableHeader header;
-    OSAddress unused1[2];
-    SLABI SLStatus (*allocatePages)(SLAllocType allocType, SLMemoryType type, UIntN pageCount, OSAddress *address);
-    OSAddress unused2;
-    SLABI SLStatus (*getMemoryMap)(UIntN *mapSize, SLMemoryDescriptor *map, UIntN *key, UIntN *descriptorSize, UInt32 *version);
-    OSAddress unused3;
+    OSAddress raiseTPL;
+    OSAddress restoreTPL;
+
+    SLABI SLStatus (*allocatePages)(SLAllocationType allocType, SLMemoryType type, OSCount pageCount, OSAddress *address);
+    SLABI SLStatus (*freePages)(OSAddress address, OSCount pageCount);
+    SLABI SLStatus (*getMemoryMap)(OSSize *mapSize, SLMemoryDescriptor *map, UInt64 *key, OSSize *descriptorSize, UInt32 *version);
+    SLABI SLStatus (*allocate)(SLMemoryType type, OSSize size, OSAddress *address);
     SLABI SLStatus (*free)(OSAddress address);
-    OSAddress unused4[9];
+
+    OSAddress createEvent;
+    OSAddress setTimer;
+    OSAddress waitForEvent;
+    OSAddress signalEvent;
+    OSAddress closeEvent;
+    OSAddress checkEvent;
+
+    OSAddress installProtocol;
+    OSAddress reinstallProtocol;
+    OSAddress uninstallProtocol;
     SLABI SLStatus (*handleProtocol)(OSAddress handle, SLProtocol *protocol, OSAddress *interface);
     OSAddress reserved;
-    OSAddress unused5;
-    SLABI SLStatus (*locateHandle)(SLSearchType type, SLProtocol *protocol, OSAddress key, UIntN *bufferSize, OSAddress buffer);
-    OSAddress unused6[4];
-    SLABI SLStatus (*exit)(OSAddress imageHandle, SLStatus exitStatus, UIntN reasonSize, OSUTF16Char *reason);
-    OSAddress unused7;
-    SLABI SLStatus (*terminate)(OSAddress imageHandle, UIntN memoryMapKey);
-    OSAddress unused8;
-    SLABI SLStatus (*stall)(UIntN microseconds);
-    OSAddress unused9[7];
-    SLABI SLStatus (*localeHandles)(SLSearchType type, SLProtocol *protocol, OSAddress key, UIntN *count, OSAddress **buffer);
-    OSAddress unused10[7];
+    OSAddress registerProtocolNotify;
+    SLABI SLStatus (*locateHandle)(SLSearchType type, SLProtocol *protocol, OSAddress key, UInt64 *bufferSize, OSAddress buffer);
+    OSAddress locateDevicePath;
+    OSAddress installConfigTable;
+
+    OSAddress loadImage;
+    OSAddress startImage;
+    SLABI SLStatus (*exit)(OSAddress imageHandle, SLStatus exitStatus, OSSize reasonSize, OSUTF16Char *reason);
+    OSAddress unloadImage;
+    SLABI SLStatus (*terminate)(OSAddress imageHandle, UInt64 memoryMapKey);
+
+    OSAddress getNextMonotonicCount;
+    SLABI SLStatus (*stall)(UInt64 microseconds);
+    OSAddress setWatchdogTimer;
+
+    OSAddress connectController;
+    OSAddress disconnectController;
+
+    OSAddress openProtocol;
+    OSAddress closeProtocol;
+    OSAddress openProtocolInfo;
+
+    OSAddress protocolsPerHandle;
+    SLABI SLStatus (*localeHandles)(SLSearchType type, SLProtocol *protocol, OSAddress key, OSCount *count, OSAddress **buffer);
+    OSAddress locateProtocol;
+    OSAddress installProtocolInterfaces;
+    OSAddress uninstallProtocolInterfaces;
+
+    OSAddress calculateCRC32;
+    OSAddress copyMemory;
+    OSAddress setMemory;
+    OSAddress createEventExtended;
 } SLBootServices;
 
 #if kCXBootloaderCode
     OSPrivate SLBootServices *SLBootServicesGetCurrent(void);
-    //OSPrivate void SLBootServicesRegisterTerminationFunction(void (*function)(SLMemoryMap *finalMap, OSAddress context), OSAddress context);
 
     OSPrivate bool SLBootServicesAllocatePages(OSAddress base, OSCount pages);
-    OSPrivate OSBuffer SLBootServicesAllocateAnyPages(OSCount pages);
-    OSPrivate OSBuffer SLBootServicesAllocate(OSSize size);
+    OSPrivate OSAddress SLBootServicesAllocateAnyPages(OSCount pages);
+    OSPrivate bool SLBootServicesFreePages(OSAddress base, OSCount pages);
+    OSPrivate OSAddress SLBootServicesAllocate(OSSize size);
     OSPrivate bool SLBootServicesFree(OSAddress address);
 
     OSPrivate SLMemoryMap *SLBootServicesGetMemoryMap(void);
@@ -109,4 +130,4 @@ typedef struct {
 
 #endif /* !kCXAssemblyCode */
 
-#endif /* !defined(__SYSTEMLOADER_SLBOOTSERVICES__) */
+#endif /* !defined(__SYSTEMLOADER_EFI_SLBOOTSERVICES__) */

@@ -4,8 +4,8 @@
 /* beeselmane - 9.10.2016  - 11:45 AM EST                          */
 /**=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=**/
 
-#ifndef __SYSTEMLOADER_SLRUNTIMESERVICES__
-#define __SYSTEMLOADER_SLRUNTIMESERVICES__ 1
+#ifndef __SYSTEMLOADER_EFI_SLRUNTIMESERVICES__
+#define __SYSTEMLOADER_EFI_SLRUNTIMESERVICES__ 1
 
 #include <Corona-X.h>
 #include <SystemLoader/SLBase.h>
@@ -36,4 +36,4 @@ typedef struct {
 
 #endif /* !kCXAssemblyCode */
 
-#endif /* !defined(__SYSTEMLOADER_SLRUNTIMESERVICES__) */
+#endif /* !defined(__SYSTEMLOADER_EFI_SLRUNTIMESERVICES__) */

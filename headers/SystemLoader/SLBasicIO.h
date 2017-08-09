@@ -15,4 +15,8 @@ OSPrivate void SLPrintStringFromList(const OSUTF8Char *format, OSVAList args);
 
 OSPrivate void SLPrintString(const OSUTF8Char *format, ...);
 
+OSPrivate void SLPrintCharacter(const OSUTF8Char character);
+
+OSPrivate void SLPrintBufferFlush(void);
+
 #endif /* !defined(__SYSTEMLOADER_SLBASICIO__) */
