@@ -8,8 +8,9 @@
 #define __SYSTEMLOADER_SLBASICDEBUG__ 1
 
 #include <Corona-X.h>
-#include <System/OSTypes.h>
-#include <System/OSCompilerMacros.h>
+#include <SystemLoader/SLBase.h>
+
+#if !kCXAssemblyCode && kCXBootloaderCode && kCXBuildDev
 
 //OSPrivate void SLShowDelay(const char *s, UInt64 seconds);
 //OSPrivate bool SLPromptUser(const char *s);
@@ -23,7 +24,8 @@ OSPrivate void SLMemoryAllocatorDumpMainPool(void);
 OSPrivate void SLMemoryAllocatorDumpHeapInfo(void);
 
 //OSPrivate bool SLGraphicsOutputDumpInfo(void);
-
 //OSPrivate void SLSystemTableDumpConfigTables(SLSystemTable *table);
+
+#endif /* kCXAssemblyCode && kCXBootloaderCode && kCXBuildDev */
 
 #endif /* !defined(__SYSTEMLOADER_SLBASICDEBUG__) */

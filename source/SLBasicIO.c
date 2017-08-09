@@ -1,4 +1,4 @@
-#include <SystemLoader/EFI/SLSystemTable.h>
+#include <SystemLoader/EFI/SLBootConsole.h>
 #include <SystemLoader/SLBasicIO.h>
 #include <System/OSByteMacros.h>
 

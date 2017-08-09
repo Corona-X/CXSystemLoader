@@ -24,6 +24,6 @@ typedef struct {
     OSPrivate bool SLConfigSave(SLConfigFile *config);
 #endif /* kCXBootloaderCode */
 
-#endif /* !kCXAssemblyCode */
+#endif /* kCXAssemblyCode */
 
 #endif /* !defined(__SYSTEMLOADER_SLCONFIGFILE__) */

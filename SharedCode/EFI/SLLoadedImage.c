@@ -1,3 +1,4 @@
+#include <SystemLoader/EFI/SLBootServices.h>
 #include <SystemLoader/EFI/SLLoadedImage.h>
 #include <SystemLoader/SLLibrary.h>
 

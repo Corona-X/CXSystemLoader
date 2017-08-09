@@ -10,15 +10,14 @@
 #include <Corona-X.h>
 #include <SystemLoader/SLBase.h>
 
-#include <SystemLoader/EFI/SLBootServices.h>
-#include <SystemLoader/EFI/SLFile.h>
-#include <SystemLoader/EFI/SLGraphics.h>
-#include <SystemLoader/EFI/SLLoadedImage.h>
-#include <SystemLoader/EFI/SLRuntimeServices.h>
-#include <SystemLoader/EFI/SLSystemTable.h>
-
+#include <SystemLoader/EFI/SLEFI.h>
+#include <SystemLoader/SLBasicDebug.h>
+#include <SystemLoader/SLBasicIO.h>
 #include <SystemLoader/SLConfigFile.h>
 #include <SystemLoader/SLLibrary.h>
 #include <SystemLoader/SLLoader.h>
+#include <SystemLoader/SLMach-O.h>
+#include <SystemLoader/SLMemoryAllocator.h>
+#include <SystemLoader/SLSystemLoader.h>
 
 #endif /* !defined(__SYSTEM__) */

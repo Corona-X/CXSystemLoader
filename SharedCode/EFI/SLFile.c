@@ -1,6 +1,6 @@
-#include <SystemLoader/EFI/SLFile.h>
 #include <SystemLoader/EFI/SLLoadedImage.h>
 #include <SystemLoader/SLMemoryAllocator.h>
+#include <SystemLoader/EFI/SLFile.h>
 #include <SystemLoader/SLLibrary.h>
 
 SLFile *SLGetRootDirectoryForImage(OSAddress imageHandle)

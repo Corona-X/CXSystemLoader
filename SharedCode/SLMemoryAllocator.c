@@ -39,7 +39,7 @@ OSAddress SLMemoryAllocatorInit(void)
     if (gSLCurrentHeap.initialized)
         return SLMemoryAllocatorGetHeapAddress();
 
-    OSSize newHeapSize = kSLMemoryAllocatorDefaultPoolSize / kSLBootPageSize;
+    OSSize newHeapSize = kSLMemoryAllocatorDefaultPoolSize >> kSLBootPageShift;
     OSAddress newHeap = SLBootServicesAllocateAnyPages(newHeapSize);
 
     if (newHeap) {
@@ -66,7 +66,7 @@ OSAddress SLMemoryAllocatorInit(void)
 void SLMemoryAllocatorSetHeap(OSAddress newHeap, OSSize newSize)
 {
     if (gSLCurrentHeap.shouldFree)
-        SLBootServicesFreePages(gSLCurrentHeap.baseAddress, gSLCurrentHeap.currentSize / kSLBootPageSize);
+        SLBootServicesFreePages(gSLCurrentHeap.baseAddress, gSLCurrentHeap.currentSize >> kSLBootPageShift);
 
     if (newHeap)
     {

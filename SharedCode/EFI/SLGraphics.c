@@ -1,6 +1,4 @@
 #include <SystemLoader/EFI/SLGraphics.h>
-#include <SystemLoader/EFI/SLBootServices.h>
-#include <SystemLoader/SLMemoryAllocator.h>
 #include <SystemLoader/SLLibrary.h>
 
 SLGraphicsOutput **SLGraphicsOutputGetAll(OSCount *count)

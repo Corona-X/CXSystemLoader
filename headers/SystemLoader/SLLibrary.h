@@ -13,30 +13,28 @@
 #include <SystemLoader/EFI/SLSystemTable.h>
 #include <SystemLoader/SLBasicIO.h>
 
-#if !kCXAssemblyCode
+#if !kCXAssemblyCode && kCXBootloaderCode
 
-#if kCXBootloaderCode
-    #define SLBootServicesCheck(e)                                                                          \
-        do {                                                                                                \
-            if (OSUnlikely(SLBootServicesHaveTerminated()))                                                 \
-            {                                                                                               \
-                SLPrintString("Function %s called after Boot Services Terminated!\n", __func__);            \
-                return e;                                                                                   \
-            }                                                                                               \
-        } while (0)
+#define SLBootServicesCheck(e)                                                                          \
+    do {                                                                                                \
+        if (OSUnlikely(SLBootServicesHaveTerminated()))                                                 \
+        {                                                                                               \
+            SLPrintString("Function %s called after Boot Services Terminated!\n", __func__);            \
+            return e;                                                                                   \
+        }                                                                                               \
+    } while (0)
 
-    OSPrivate SLABI OSNoReturn void SLLeave(SLStatus status);
-    OSPrivate OSAddress SLGetMainImageHandle(void);
-    OSPrivate OSNoReturn void SLUnrecoverableError(void);
-    OSPrivate bool SLDelayProcessor(UInt64 time);
+OSPrivate SLABI OSNoReturn void SLLeave(SLStatus status);
+OSPrivate OSNoReturn void SLUnrecoverableError(void);
+OSPrivate OSAddress SLGetMainImageHandle(void);
+OSPrivate bool SLDelayProcessor(UInt64 time);
 
-    OSExport OSAddress gSLFirmwareReturnAddress;
-    OSExport SLSystemTable *gSLLoaderSystemTable;
-    OSExport OSAddress gSLLoaderImageHandle;
-    OSExport bool gSLBootServicesEnabled;
-    OSExport OSSize gSLLoaderImageSize;
-#endif /* kCXBootloaderCode */
+OSExport OSAddress gSLFirmwareReturnAddress;
+OSExport SLSystemTable *gSLLoaderSystemTable;
+OSExport OSAddress gSLLoaderImageHandle;
+OSExport bool gSLBootServicesEnabled;
+OSExport OSSize gSLLoaderImageSize;
 
-#endif /* !kCXAssemblyCode */
+#endif /* kCXAssemblyCode && kCXBootloaderCode */
 
 #endif /* !defined(__SYSTEMLOADER_SLLIBRARY__) */

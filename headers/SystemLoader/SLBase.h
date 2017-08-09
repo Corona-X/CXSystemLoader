@@ -12,6 +12,11 @@
 #include <System/OSUID.h>
 #include <System/OSCompilerMacros.h>
 
+#define kSLBootPageShift                12
+#define kSLBootPageSize                 4096
+
+#if !kCXAssemblyCode
+
 #define kSLConsoleControlProtocol       ((SLProtocol){0xF42F7782, 0x012E, 0x4C12, {0x99, 0x56, 0x49, 0xF9, 0x43, 0x04, 0xF7, 0x21}})
 #define kSLACPITableID                  ((SLProtocol){0x8868E871, 0xE4F1, 0x11D3, {0xBC, 0x22, 0x00, 0x80, 0xC7, 0x3C, 0x88, 0x81}})
 #define kSLGraphicsOutputProtocol       ((SLProtocol){0x9042A9DE, 0x23DC, 0x4A38, {0x96, 0xFB, 0x7A, 0xDE, 0xD0, 0x80, 0x51, 0x6A}})
@@ -30,12 +35,8 @@
 #define kSLStatusLoadError              ((SLStatus)(1  | (1UL << 63UL)))
 #define kSLStatusSuccess                0
 
-#define SLABI                           __attribute__((ms_abi))
-#define kSLBootPageSize                 4096
-
-#if !kCXAssemblyCode
-
 #define SLStatusError(s)                ((s >> 63) & 1)
+#define SLABI                           __attribute__((ms_abi))
 
 #if !kCXDebug
     #define SLStatusIsError(s)          SLStatusError(s)
@@ -50,7 +51,7 @@
                                                                 \
             ((s >> 63) & 1);                                    \
         })
-#endif /* kCXBuildDev */
+#endif /* kCXDebug */
 
 typedef OSUIDIntelData SLProtocol;
 typedef UInt64 SLStatus;

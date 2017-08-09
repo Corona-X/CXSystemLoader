@@ -21,8 +21,10 @@
 #define kSLLoaderDataDirectory      "/EFI/corona"
 #define kSLLoaderConfigFile         "SLConfigFile"
 
-#if kCXBootloaderCode && !kCXAssemblyCode
-    OSPrivate SLStatus CXSystemLoaderMain(OSAddress imageHandle, SLSystemTable *systemTable);
-#endif /* kCXBootloaderCode && !kCXAssemblyCode*/
+#if !kCXAssemblyCode && kCXBootloaderCode
+
+OSPrivate SLStatus CXSystemLoaderMain(OSAddress imageHandle, SLSystemTable *systemTable);
+
+#endif /* kCXAssemblyCode && kCXBootloaderCode */
 
 #endif /* !defined(__SYSTEMLOADER_SLLOADER__) */
