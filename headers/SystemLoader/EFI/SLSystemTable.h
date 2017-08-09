@@ -25,11 +25,11 @@ typedef struct {
     OSUTF16Char         *firmwareVendor;
     UInt32              firmwareRevision;
     OSAddress           stdinHandle;
-    SLSimpleTextInput   *stdin;
+    SLConsoleInput      *stdin;
     OSAddress           stdoutHandle;
-    SLSimpleTextOutput  *stdout;
+    SLConsoleOutput     *stdout;
     OSAddress           stderrHandle;
-    SLSimpleTextOutput  *stderr;
+    SLConsoleOutput     *stderr;
     SLRuntimeServices   *runtimeServices;
     SLBootServices      *bootServices;
     UInt64              numberOfConfigTables;

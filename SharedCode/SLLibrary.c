@@ -22,13 +22,17 @@ bool SLDelayProcessor(UInt64 time)
 #if kCXBuildDev
     void SLUnrecoverableError(void)
     {
-        SLPrintString("Unrecoverable Error!\n");
+        if (gSLBootConsoleIsInitialized)
+            SLPrintString("Unrecoverable Error!\n");
+
         SLLeave(kSLStatusLoadError);
     }
 #else /* !kCXBuildDev */
     void SLUnrecoverableError(void)
     {
-        SLPrintString("Unrecoverable Error!\n");
+        if (gSLBootConsoleIsInitialized)
+            SLPrintString("Unrecoverable Error!\n");
+
         SLLeave(kSLStatusLoadError);
     }
 #endif /* kCXBuildDev */

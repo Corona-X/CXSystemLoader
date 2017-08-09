@@ -5,6 +5,9 @@
 .section kXKCodeSectionName
 .align kXKNaturalAlignment
 
+.extern SKSymbol(gSLBootConsoleIsInitialized)
+.extern SKSymbol(SLPrintBufferFlush)
+
 // Arguments:
 //   %rcx: Image Handle
 //   %rdx: System Table
@@ -45,6 +48,11 @@ XKDeclareFunction(_SLEntry):
     XKLoadSymbol(gSLBootServicesEnabled, %rbx)              // Load the BootServicesEnabled variable pointer into the b register
     movb $1, (%rbx)                                         // Mark boot services as being enabled
 
+    #if kCXBuildDev
+        leaq XKSymbol(SLBootConsoleInitialize)(%rip), %rax  // Load the address of the BootConsole initialize function into the accumulator
+        callq *%rax                                         // Initialize the BootConsole here if development or debug build
+    #endif /* kCXBuildDev */
+
     leaq XKSymbol(SLMemoryAllocatorInit)(%rip), %rax        // Load the address of the memory allocator initialze function into the accumulator
     callq *%rax                                             // Call the address stored in the accumulator (depends on if a development build)
 
@@ -60,6 +68,8 @@ XKDeclareFunction(_SLEntry):
     movq %rax, %rcx                                         // Use the return address from the main function as the first argument to SLLeave
     pushq %rax                                              // Push a fake return address. SLLeave will inject firmware return address here on the stack
 
+.align kXKNaturalAlignment
+
 // Arguments:
 //   %rcx: Exit Code
 //
@@ -67,24 +77,33 @@ XKDeclareFunction(_SLEntry):
 // without returning. It can do pretty
 // much whatever it wants...
 XKDeclareFunction(SLLeave):
-    movq %rcx, %rdx                                         // Save exit code in the d register
-    XKLoadSymbol(gSLLoaderImageHandle, %rbx)                // Load the EFI image handle pointer
-    movq (%rbx), %rcx                                       // Store the image handle in the c register
-    xorq %r8, %r8                                           // Clear 3rd argument
-    xorq %r9, %r9                                           // Clear 4th argument
-    XKLoadSymbol(gSLLoaderSystemTable, %rax)                // Load the EFI system table pointer
-    movq (%rax), %rbx                                       // Store the system table into the accumulator
-    movq 0x60(%rbx), %rax                                   // Locate the address of the boot services table
-    callq *0xD8(%rax)                                       // Call the boot services exit function
+    XKLoadSymbol(gSLBootConsoleIsInitialized, %rbx)         // Load Address of symbol which indiccates if BootConsole has been initialized
+    movq (%rbx), %rax                                       // Load value into accumulator
+    test %rax, %rax                                         // Test if boot console has been initialized
+    jz 1f                                                   // If boot console wasn't initialized, just exit
 
-    // If we're here, there was an error exiting.
-    // Return to the address given by the firmware
-    // on the initial program stack (saved in entry)
-    XKLoadSymbol(gSLFirmwareReturnAddress, %rbx)
-    movq (%rbx), %rax                                       // Load return address into accumulator
-    popq %rcx                                               // Kill real return address on the stack
-    pushq (%rax)                                            // Inject firmware return address
-    ret                                                     // Return to given address
+    leaq XKSymbol(SLPrintBufferFlush)(%rip), %rax           // Prepare to flush the print buffer
+    callq *%rax                                             // Flush the print buffer
+
+    1:
+        movq %rcx, %rdx                                     // Save exit code in the d register
+        XKLoadSymbol(gSLLoaderImageHandle, %rbx)            // Load the EFI image handle pointer
+        movq (%rbx), %rcx                                   // Store the image handle in the c register
+        xorq %r8, %r8                                       // Clear 3rd argument
+        xorq %r9, %r9                                       // Clear 4th argument
+        XKLoadSymbol(gSLLoaderSystemTable, %rax)            // Load the EFI system table pointer
+        movq (%rax), %rbx                                   // Store the system table into the accumulator
+        movq 0x60(%rbx), %rax                               // Locate the address of the boot services table
+        callq *0xD8(%rax)                                   // Call the boot services exit function
+
+        // If we're here, there was an error exiting.
+        // Return to the address given by the firmware
+        // on the initial program stack (saved in entry)
+        XKLoadSymbol(gSLFirmwareReturnAddress, %rbx)
+        movq (%rbx), %rax                                       // Load return address into accumulator
+        popq %rcx                                               // Kill real return address on the stack
+        pushq (%rax)                                            // Inject firmware return address
+        ret                                                     // Return to given address
 
 .comm XKSymbol(gSLFirmwareReturnAddress), 8, 8
 .comm XKSymbol(gSLLoaderSystemTable),     8, 8

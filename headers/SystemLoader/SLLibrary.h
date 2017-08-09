@@ -21,7 +21,7 @@
             if (OSUnlikely(SLBootServicesHaveTerminated()))                                                 \
             {                                                                                               \
                 SLPrintString("Function %s called after Boot Services Terminated!\n", __func__);            \
-                return (e);                                                                                 \
+                return e;                                                                                   \
             }                                                                                               \
         } while (0)
 

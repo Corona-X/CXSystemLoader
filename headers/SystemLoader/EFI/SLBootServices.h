@@ -104,7 +104,7 @@ typedef struct {
 
     OSAddress protocolsPerHandle;
     SLABI SLStatus (*localeHandles)(SLSearchType type, SLProtocol *protocol, OSAddress key, OSCount *count, OSAddress **buffer);
-    OSAddress locateProtocol;
+    SLABI SLStatus (*locateProtocol)(SLProtocol *protocol, OSAddress registraction, OSAddress *interface);
     OSAddress installProtocolInterfaces;
     OSAddress uninstallProtocolInterfaces;
 
@@ -116,6 +116,7 @@ typedef struct {
 
 #if kCXBootloaderCode
     OSPrivate SLBootServices *SLBootServicesGetCurrent(void);
+    OSPrivate bool SLBootServicesHaveTerminated(void);
 
     OSPrivate bool SLBootServicesAllocatePages(OSAddress base, OSCount pages);
     OSPrivate OSAddress SLBootServicesAllocateAnyPages(OSCount pages);
@@ -125,7 +126,7 @@ typedef struct {
 
     OSPrivate SLMemoryMap *SLBootServicesGetMemoryMap(void);
     OSPrivate SLMemoryMap *SLBootServicesTerminate(void);
-    OSPrivate bool SLBootServicesHaveTerminated(void);
+    OSPrivate OSAddress SLBootServicesLocateProtocol(SLProtocol protocol);
 #endif /* kCXBootloaderCode */
 
 #endif /* !kCXAssemblyCode */

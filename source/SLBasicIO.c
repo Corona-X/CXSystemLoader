@@ -95,6 +95,11 @@ static void SLPrintNumber(UInt64 *n, bool isSigned, UInt8 base, UInt8 padding)
 // It's the bootloader, who cares.
 void SLPrintString(OSUnused const OSUTF8Char *format, ...)
 {
+    #if !kCXBuildDev
+        if (OSUnlikely(!gSLBootConsoleIsInitialized))
+            SLBootConsoleInitialize();
+    #endif /* kCXBuildDev */
+
     bool justEnteredEscapeCode = false;
     bool specialPadding = false;
     bool inEscapeCode = false;

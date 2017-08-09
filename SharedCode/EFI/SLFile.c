@@ -117,7 +117,7 @@ OSOffset SLFileReadAt(SLFile *file, OSOffset offset, OSAddress buffer, OSSize si
     SLStatus status = file->getInfo(file, &fileInfoUID, &fileInfoSize, &fileInfo);
     if (status == kSLStatusBufferTooSmall) status = kSLStatusSuccess;
     if (SLStatusIsError(status)) return kOSBufferEmpty;
-    
+
     OSBuffer buffer = SLAllocate(fileInfo.size);
     if (OSBufferIsEmpty(buffer)) return kOSBufferEmpty;
     status = file->read(file, &buffer.size, buffer.address);

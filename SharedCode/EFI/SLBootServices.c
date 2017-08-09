@@ -135,3 +135,15 @@ SLMemoryMap *SLBootServicesTerminate(void)
         return finalMemoryMap;
     }
 }
+
+OSAddress SLBootServicesLocateProtocol(SLProtocol protocol)
+{
+    SLBootServicesCheck(kOSNullPointer);
+    OSAddress result;
+
+    SLStatus status = SLBootServicesGetCurrent()->locateProtocol(&protocol, kOSNullPointer, &result);
+    if (status == kSLStatusNotFound) return kOSNullPointer;
+    if (SLStatusIsError(status)) return kOSNullPointer;
+
+    return result;
+}

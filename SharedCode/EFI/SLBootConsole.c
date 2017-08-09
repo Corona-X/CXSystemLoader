@@ -2,11 +2,74 @@
 #include <SystemLoader/EFI/SLSystemTable.h>
 #include <SystemLoader/SLLibrary.h>
 
+bool gSLBootConsoleIsInitialized = false;
+
+void SLBootConsoleInitialize(void)
+{
+    SLBootServicesCheck();
+
+    if (gSLBootConsoleIsInitialized)
+        return;
+
+    SLConsoleControl *consoleControl = SLBootServicesLocateProtocol(kSLConsoleControlProtocol);
+
+    if (consoleControl)
+    {
+        SLStatus status = consoleControl->setMode(consoleControl, kSLConsoleScreenModeText);
+        if (SLStatusIsError(status)) SLUnrecoverableError();
+    }
+
+    if (!SLBootConsoleResetOutput()) SLUnrecoverableError();
+    if (!SLBootConsoleResetInput()) SLUnrecoverableError();
+    SLConsoleOutput *stream = SLBootConsoleGetOutput();
+
+    OSIndex maxMode = 0;
+    OSSize maxSize = 0;
+    SLStatus status;
+
+    for (OSIndex i = 0; ; i++)
+    {
+        UInt64 columns, rows;
+
+        status = stream->queryMode(stream, i, &columns, &rows);
+        if (SLStatusError(status)) break;
+
+        if ((columns * rows) > maxSize)
+        {
+            maxSize = columns * rows;
+            maxMode = i;
+        }
+    }
+
+    if (!maxSize) SLUnrecoverableError();
+
+    status = stream->setMode(stream, maxMode);
+    if (SLStatusIsError(status)) SLUnrecoverableError();
+
+    //status = stream->setAttributes(stream, 0x07);
+    //if (SLStatusIsError(status)) SLUnrecoverableError();
+
+    status = stream->enableCursor(stream, false);
+    if (SLStatusIsError(status)) SLUnrecoverableError();
+
+    //if (!SLBootConsoleClearScreen())
+    //    SLUnrecoverableError();
+
+    gSLBootConsoleIsInitialized = true;
+}
+
+#pragma mark - Input Console
+
+SLConsoleInput *SLBootConsoleGetInput(void)
+{
+    return SLSystemTableGetCurrent()->stdin;
+}
+
 bool SLBootConsoleResetInput(void)
 {
     SLBootServicesCheck(false);
 
-    SLStatus status = SLSystemTableGetCurrent()->stdin->reset(SLSystemTableGetCurrent()->stdin, true);
+    SLStatus status = SLBootConsoleGetInput()->reset(SLBootConsoleGetInput(), true);
     return !SLStatusIsError(status);
 }
 
@@ -17,17 +80,24 @@ UInt16 SLBootConsoleReadKey(bool shouldBlock)
     SLKeyPress key;
 
     do {
-        status = SLSystemTableGetCurrent()->stdin->readKey(SLSystemTableGetCurrent()->stdin, &key);
+        status = SLBootConsoleGetInput()->readKey(SLBootConsoleGetInput(), &key);
     } while (shouldBlock && status == kSLStatusNotReady);
 
     return key.keycode;
+}
+
+#pragma mark - Output Console
+
+SLConsoleOutput *SLBootConsoleGetOutput(void)
+{
+    return SLSystemTableGetCurrent()->stdout;
 }
 
 bool SLBootConsoleResetOutput(void)
 {
     SLBootServicesCheck(false);
 
-    SLStatus status = SLSystemTableGetCurrent()->stdout->reset(SLSystemTableGetCurrent()->stdout, true);
+    SLStatus status = SLBootConsoleGetOutput()->reset(SLBootConsoleGetOutput(), true);
     return !SLStatusIsError(status);
 }
 
@@ -35,14 +105,14 @@ bool SLBootConsoleOutput(OSUTF16Char *string)
 {
     SLBootServicesCheck(false);
 
-    SLStatus status = SLSystemTableGetCurrent()->stdout->output(SLSystemTableGetCurrent()->stdout, string);
+    SLStatus status = SLBootConsoleGetOutput()->output(SLBootConsoleGetOutput(), string);
     return !SLStatusIsError(status);
 }
 
-bool SLBootConsoleGetMode(UInt64 mode, UInt64 *columns, UInt64 *rows);
+bool SLBootConsoleClearScreen(void)
+{
+    SLBootServicesCheck(false);
 
-bool SLBootConsoleSetMode(UInt64 mode);
-
-bool SLBootConsoleClearScreen(void);
-
-bool SLBootConsoleEnableCursor(bool enable);
+    SLStatus status = SLBootConsoleGetOutput()->clearScreen(SLBootConsoleGetOutput());
+    return !SLStatusIsError(status);
+}
