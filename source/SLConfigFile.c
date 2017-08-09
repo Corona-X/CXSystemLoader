@@ -12,6 +12,7 @@ SLConfigFile *SLConfigLoad(OSUTF8Char *path)
     gSLCurrentConfig = SLAllocate(sizeof(SLConfigFile));
 
     gSLCurrentConfig->rootParitionID = ((OSUIDIntelData){0x00000000, 0x0000, 0x0000, {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}});
+    gSLCurrentConfig->bootTimeout = 0;
 
     SLFile *file = SLOpenPath(path, kSLFileModeRead);
     if (!file) return gSLCurrentConfig;

@@ -15,6 +15,8 @@
 
 typedef struct {
     OSUIDIntelData rootParitionID;
+    UInt64 bootTimeout;
+
     OSUTF16Char *path;
 } SLConfigFile;
 
