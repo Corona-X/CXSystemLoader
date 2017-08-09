@@ -13,7 +13,7 @@
 
 #define kSLLoaderSystemName         "Corona-X"
 #define kSLLoaderVersionString      "A.1"
-#define kSLLoaderBuildString        "004B"
+#define kSLLoaderBuildString        "004C"
 
 #define kSLLoaderWelcomeString      kSLLoaderSystemName " System Loader Version " kSLLoaderVersionString " [Build " kSLLoaderBuildString "]\n"
 #define kSLLoaderBootArchivePath    "/boot/BootX.car"

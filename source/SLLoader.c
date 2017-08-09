@@ -7,6 +7,14 @@
 
 #include <System/Executables/OSELF.h>
 
+// TODO: Fix includes
+// TODO: SLRuntimeServices.h/c
+// TODO: SystemLoader.h
+// TODO: SLSystemLoader.h
+// TODO: Mach-O Loader
+// TODO: SLConfigFile.c
+// TODO: Test on a real machine!
+
 UInt64 SLCPUFrequencyEstimate(void);
 bool SLBlockIsCARSystem(OSAddress block);
 void SLPrintSystemInfo(CASystemVersionInternal *version);

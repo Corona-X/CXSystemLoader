@@ -22,6 +22,7 @@
 
 #define kSLStatusIncompatibleVersion    ((SLStatus)(25 | (1UL << 63UL)))
 #define kSLStatusNotFound               ((SLStatus)(14 | (1UL << 63UL)))
+#define kSLStatusNoMedia                ((SLStatus)(12 | (1UL << 63UL)))
 #define kSLStatusWrongSize              ((SLStatus)(4  | (1UL << 63UL)))
 #define kSLStatusBufferTooSmall         ((SLStatus)(5  | (1UL << 63UL)))
 #define kSLStatusNotReady               ((SLStatus)(6  | (1UL << 63UL)))

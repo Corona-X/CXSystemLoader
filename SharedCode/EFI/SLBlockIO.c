@@ -11,5 +11,7 @@ bool SLBlockIOReadBlocks(SLBlockIO *object, OSOffset lba, OSAddress address, OSS
     SLBootServicesCheck(false);
 
     SLStatus status = object->readBlocks(object, object->media->mediaID, lba, size, address);
+    if (status == kSLStatusNoMedia) return false;
+
     return !SLStatusIsError(status);
 }

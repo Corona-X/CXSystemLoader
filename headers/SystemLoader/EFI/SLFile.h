@@ -17,10 +17,14 @@
 #if !kCXAssemblyCode
 
 typedef struct {
-    UInt64 unused1;
     OSSize size;
-    UInt64 unused2[4];
-    UInt16 *name;
+    OSSize fileSize;
+    UInt64 physicalSize;
+    UInt64 createTime;
+    UInt64 accessTime;
+    UInt64 modTime;
+    UInt64 attributes;
+    OSUTF16Char name[];
 } SLFileInfo;
 
 typedef struct {
@@ -45,28 +49,28 @@ typedef struct {
 #if kCXBootloaderCode
     OSPrivate SLFile *SLGetRootDirectoryForImage(OSAddress imageHandle);
 
-    OSPrivate SLFile *SLOpenChild(SLFile *parent, OSUTF8Char *child, UInt8 mode);
-    OSPrivate SLFile *SLOpenPath(OSUTF8Char *path, UInt8 mode);
+    OSPrivate SLFile *SLOpenChild(SLFile *parent, const OSUTF8Char *child, UInt8 mode);
+    OSPrivate SLFile *SLOpenPath(const OSUTF8Char *path, UInt8 mode);
     OSPrivate bool SLFileClose(SLFile *file);
 
     OSPrivate bool SLFileRead(SLFile *file, OSAddress buffer, OSSize size);
-    OSPrivate bool SLPathRead(OSUTF8Char *path, OSOffset offset, OSAddress buffer, OSSize size);
+    OSPrivate bool SLPathRead(const OSUTF8Char *path, OSOffset offset, OSAddress buffer, OSSize size);
     OSPrivate OSOffset SLFileReadAt(SLFile *file, OSOffset offset, OSAddress buffer, OSSize size);
 
     OSPrivate bool SLFileWrite(SLFile *file, OSAddress buffer, OSSize size);
-    OSPrivate bool SLPathWrite(OSUTF8Char *path, OSAddress buffer, OSSize size);
+    OSPrivate bool SLPathWrite(const OSUTF8Char *path, OSAddress buffer, OSSize size);
     OSPrivate OSOffset SLFileWriteAt(SLFile *file, OSOffset offset, OSAddress buffer, OSSize size);
 
     OSPrivate bool SLFileSetOffset(SLFile *file, OSOffset offset);
-    OSPrivate bool SLFileGetOffset(SLFile *file, OSOffset offset);
+    OSPrivate OSOffset SLFileGetOffset(SLFile *file);
     OSPrivate bool SLFileGetSize(SLFile *file, OSSize *size);
-    OSPrivate bool SLPathGetSize(SLFile *file, OSSize *size);
+    OSPrivate bool SLPathGetSize(const OSUTF8Char *path, OSSize *size);
 
-    OSPrivate OSAddress SLPathReadFully(OSUTF8Char *path, OSSize *size);
+    OSPrivate OSAddress SLPathReadFully(const OSUTF8Char *path, OSSize *size);
     OSPrivate OSAddress SLFileReadFully(SLFile *file, OSSize *size);
     OSPrivate bool SLFileSync(SLFile *file);
 
-    OSPrivate OSUTF16Char *SLPathToEFIPath(OSUTF8Char *path);
+    OSPrivate OSUTF16Char *SLPathToEFIPath(const OSUTF8Char *path);
 #endif /* kCXBootloaderCode */
 
 #endif /* !kCXAssemblyCode */

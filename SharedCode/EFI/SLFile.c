@@ -15,7 +15,7 @@ SLFile *SLGetRootDirectoryForImage(OSAddress imageHandle)
 
 #pragma mark - Open/Close Functions
 
-SLFile *SLOpenChild(SLFile *parent, OSUTF8Char *child, UInt8 mode)
+SLFile *SLOpenChild(SLFile *parent, const OSUTF8Char *child, UInt8 mode)
 {
     SLBootServicesCheck(kOSNullPointer);
     SLFile *file;
@@ -26,7 +26,7 @@ SLFile *SLOpenChild(SLFile *parent, OSUTF8Char *child, UInt8 mode)
     return file;
 }
 
-SLFile *SLOpenPath(OSUTF8Char *path, UInt8 mode)
+SLFile *SLOpenPath(const OSUTF8Char *path, UInt8 mode)
 {
     if (kCXBuildDev) SLBootServicesCheck(kOSNullPointer);
 
@@ -69,7 +69,7 @@ bool SLFileRead(SLFile *file, OSAddress buffer, OSSize size)
     return !SLStatusIsError(status);
 }
 
-bool SLPathRead(OSUTF8Char *path, OSOffset offset, OSAddress buffer, OSSize size)
+bool SLPathRead(const OSUTF8Char *path, OSOffset offset, OSAddress buffer, OSSize size)
 {
     if (kCXBuildDev) SLBootServicesCheck(false);
 
@@ -82,78 +82,175 @@ bool SLPathRead(OSUTF8Char *path, OSOffset offset, OSAddress buffer, OSSize size
 
 OSOffset SLFileReadAt(SLFile *file, OSOffset offset, OSAddress buffer, OSSize size)
 {
-    SLBootServicesCheck(false);
+    SLBootServicesCheck(-1);
     OSOffset initialOffset;
 
     SLStatus status = file->getOffset(file, &initialOffset);
-    if (SLStatusIsError(status)) return false;
+    if (SLStatusIsError(status)) return -1;
 
     if (initialOffset != offset)
     {
         status = file->setOffset(file, offset);
-        if (SLStatusIsError(status)) return false;
+        if (SLStatusIsError(status)) return -1;
     }
 
     if (!SLFileRead(file, buffer, size))
-        return ~((OSOffset)0);
+        return -1;
 
     return initialOffset;
 }
 
 #pragma mark - Write Functions
 
+bool SLFileWrite(SLFile *file, OSAddress buffer, OSSize size)
+{
+    SLBootServicesCheck(false);
+    OSSize writtenSize = size;
+
+    SLStatus status = file->write(file, &writtenSize, buffer);
+    if (writtenSize != size) return false;
+
+    return !SLStatusIsError(status);
+}
+
+bool SLPathWrite(const OSUTF8Char *path, OSAddress buffer, OSSize size)
+{
+    if (kCXBuildDev) SLBootServicesCheck(false);
+
+    SLFile *file = SLOpenPath(path, kSLFileModeWrite | kSLFileModeCreate);
+    if (!file) return false;
+
+    bool success = SLFileWrite(file, buffer, size);
+    return (SLFileClose(file) && success);
+}
+
+OSOffset SLFileWriteAt(SLFile *file, OSOffset offset, OSAddress buffer, OSSize size)
+{
+    SLBootServicesCheck(-1);
+    OSOffset initialOffset;
+
+    SLStatus status = file->getOffset(file, &initialOffset);
+    if (SLStatusIsError(status)) return -1;
+
+    if (initialOffset != offset)
+    {
+        status = file->setOffset(file, offset);
+        if (SLStatusIsError(status)) return -1;
+    }
+
+    if (!SLFileWrite(file, buffer, size))
+        return -1;
+
+    return initialOffset;
+}
+
 #pragma mark - Stream Manipulation/Statistics
+
+bool SLFileSetOffset(SLFile *file, OSOffset offset)
+{
+    SLBootServicesCheck(false);
+
+    SLStatus status = file->setOffset(file, offset);
+    return !SLStatusIsError(status);
+}
+
+OSOffset SLFileGetOffset(SLFile *file)
+{
+    SLBootServicesCheck(false);
+    OSOffset offset;
+
+    SLStatus status = file->getOffset(file, &offset);
+    if (SLStatusIsError(status)) return -1;
+
+    return offset;
+}
+
+bool SLFileGetSize(SLFile *file, OSSize *size)
+{
+    SLBootServicesCheck(false);
+    if (!size) return false;
+
+    OSSize infoSize = sizeof(SLFileInfo);
+    SLProtocol fileInfo = kSLFileInfoID;
+    SLFileInfo info;
+
+    SLStatus status = file->getInfo(file, &fileInfo, &infoSize, &info);
+    if (status == kSLStatusBufferTooSmall) status = kSLStatusSuccess;
+    if (SLStatusIsError(status)) return false;
+
+    return info.fileSize;
+}
+
+bool SLPathGetSize(const OSUTF8Char *path, OSSize *size)
+{
+    if (kCXBuildDev) SLBootServicesCheck(false);
+
+    SLFile *file = SLOpenPath(path, kSLFileModeWrite | kSLFileModeCreate);
+    if (!file) return false;
+
+    bool success = SLFileGetSize(file, size);
+    return (SLFileClose(file) && success);
+}
 
 #pragma mark - Utility Functions
 
-/*OSBuffer SLFileReadFully(SLFile *file)
+OSAddress SLPathReadFully(const OSUTF8Char *path, OSSize *size)
 {
-    SLBootServicesCheck(kOSBufferEmpty);
-    
-    OSUIDIntelData fileInfoUID = kSLFileInfoID;
-    OSSize fileInfoSize = sizeof(SLFileInfo);
-    SLFileInfo fileInfo;
-    
-    SLStatus status = file->getInfo(file, &fileInfoUID, &fileInfoSize, &fileInfo);
-    if (status == kSLStatusBufferTooSmall) status = kSLStatusSuccess;
-    if (SLStatusIsError(status)) return kOSBufferEmpty;
-
-    OSBuffer buffer = SLAllocate(fileInfo.size);
-    if (OSBufferIsEmpty(buffer)) return kOSBufferEmpty;
-    status = file->read(file, &buffer.size, buffer.address);
-    
-    if (SLStatusIsError(status) || buffer.size < fileInfo.size)
-    {
-        SLFreeBuffer(buffer);
-        
-        buffer = kOSBufferEmpty;
-    }
-    
-    return buffer;
-}
-
-OSBuffer SLReadPathFully(OSUTF8Char *path)
-{
-    SLBootServicesCheck(kOSBufferEmpty);
+    SLBootServicesCheck(kOSNullPointer);
 
     SLFile *file = SLOpenPath(path, kSLFileModeRead);
-    if (!file) return kOSBufferEmpty;
+    if (!file) return kOSNullPointer;
 
-    OSBuffer result = SLFileReadFully(path);
+    OSAddress address = SLFileReadFully(file, &size);
 
-    if (!SLCloseFile(file) && !OSBufferIsEmpty(result))
+    if (!SLFileClose(file))
     {
-        SLFreeBuffer(result);
-
-        result = kOSBufferEmpty;
+        if (address) SLFree(address);
+        return kOSNullPointer;
     }
 
-    return result;
-}*/
+    if (!address) return kOSNullPointer;
+
+    return address;
+}
+
+OSAddress SLFileReadFully(SLFile *file, OSSize *size)
+{
+    SLBootServicesCheck(kOSNullPointer);
+    OSSize fileSize = 0;
+
+    if (!SLFileGetSize(file, &fileSize))
+        return kOSNullPointer;
+
+    OSAddress address = SLAllocate(fileSize);
+    if (!address) return kOSNullPointer;
+
+    if (!SLFileSetOffset(file, 0))
+        goto fail;
+
+    if (!SLFileRead(file, address, fileSize))
+        goto fail;
+
+    if (size) (*size) = fileSize;
+    return address;
+
+fail:
+
+    SLFree(address);
+    return kOSNullPointer;
+}
+
+bool SLFileSync(SLFile *file)
+{
+    SLBootServicesCheck(false);
+
+    SLStatus status = file->flush(file);
+    return !SLStatusIsError(status);
+}
 
 #pragma mark - Path Conversion
 
-OSUTF16Char *SLPathToEFIPath(OSUTF8Char *path)
+OSUTF16Char *SLPathToEFIPath(const OSUTF8Char *path)
 {
     return path;
 }
