@@ -11,4 +11,8 @@
 #include <SystemLoader/SLBase.h>
 #include <System/Executables/OSMach-O.h>
 
+OSPrivate bool SLMachOValidate(OSAddress base, OSSize size);
+OSPrivate bool SLMachOReplaceSymbols(OSAddress imageBase, OSSize imageSize, const OSUTF8Char **symbols, OSCount count, const OSAddress *values, OSSize *symbolSizes);
+OSPrivate void SLMachOExecute(OSAddress base, OSSize size);
+
 #endif /* !defined(__SYSTEMLOADER_SLMACHO__) */
