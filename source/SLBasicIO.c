@@ -93,7 +93,7 @@ static void SLPrintNumber(UInt64 *n, bool isSigned, UInt8 base, UInt8 padding)
 
 // This 'printf' function is nowhere near compliant to any standard.
 // It's the bootloader, who cares.
-void SLPrintString(OSUnused const OSUTF8Char *format, ...)
+void SLPrintString(const OSUTF8Char *format, ...)
 {
     #if !kCXBuildDev
         if (OSUnlikely(!gSLBootConsoleIsInitialized))

@@ -1,11 +1,37 @@
 #include <SystemLoader/SLLibrary.h>
 #include <SystemLoader/SLBase.h>
+#include <Kernel/C/XKMemory.h>
+#include <Kernel/C/XKUnicode.h>
 
-extern void CXKernelLoaderMain(void);
+#include <Kernel/Shared/XKLegacy.h>
+
+#define kCXLowMemoryString "Corona System " kCXSystemName " " kCXSystemRevision "." kCXSystemMajorVersion ""
+
+OSExport void CXKernelLoaderMain(void);
+OSPrivate void SLSetupMem0(void);
+
+extern SLSystemTable *gSLLoaderSystemTable;
+extern OSAddress gSLBootXAddress;
+
+void SLSetupMem0(void)
+{
+    UInt8 mem0[0x400];
+
+    XKMemorySetValue(mem0, 0x400, 0);
+    mem0[0] = 0xC1;
+
+    XKMemoryCopy(kCXLowMemoryString, &mem0[1], __builtin_strlen(kCXLowMemoryString));
+    XKMemoryCopy(mem0, kOSNullPointer, 0x400);
+}
 
 void CXKernelLoaderMain(void)
 {
-    SLPrintString("Entered CXKernelLoader!\n");
+    // This function isn't implemented yet...
+    //SLPrintString("Entered CXKernelLoader!\n");
+    //SLPrintString("BootX.car loaded at %p\n", gSLBootXAddress);
+
+    // Set First KiB of RAM to System Info (Below legacy BIOS data area)
+    SLSetupMem0();
 
     // Okay okay okay. So this *should* not return.
     // HOWEVER, for debugging purposes, this returns.

@@ -12,7 +12,7 @@
 #include <SystemLoader/EFI/SLSystemTable.h>
 
 #define kSLLoaderVersionString      kCXSystemRevision "." kCXSystemMajorVersion
-#define kSLLoaderBuildString        "0055"
+#define kSLLoaderBuildString        "005A"
 
 #define kSLLoaderWelcomeString      kCXSystemName " System Loader Version " kSLLoaderVersionString " [" kCXBuildTypeString " Build " kSLLoaderBuildString "]\n"
 #define kSLLoaderBootArchivePath    "/boot/BootX.car"

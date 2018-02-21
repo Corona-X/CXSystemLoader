@@ -30,7 +30,7 @@ typedef struct {
 
 typedef struct {
     SLABI SLStatus (*reset)(OSAddress this, bool extendedVerify);
-    SLABI SLStatus (*output)(OSAddress this, OSUTF16Char *string);
+    SLABI SLStatus (*output)(OSAddress this, const OSUTF16Char *string);
     SLABI SLStatus (*queryMode)(OSAddress this, UInt64 mode, UInt64 *columns, UInt64 *rows);
     SLABI SLStatus (*setMode)(OSAddress this, UInt64 mode);
     SLABI SLStatus (*setAttributes)(OSAddress this, UInt64 attributes);
