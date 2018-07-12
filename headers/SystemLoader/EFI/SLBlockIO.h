@@ -38,7 +38,7 @@ typedef struct {
 
 #if kCXBootloaderCode
     SLBlockIO **SLBlockIOGetAll(OSCount *count);
-    bool SLBlockIOReadBlocks(SLBlockIO *object, OSOffset lba, OSAddress address, OSSize size);
+    bool SLBlockIORead(SLBlockIO *object, OSOffset lba, OSAddress address, OSSize size);
 #endif /* kCXBootloaderCode */
 
 #endif /* !kCXAssemblyCode */

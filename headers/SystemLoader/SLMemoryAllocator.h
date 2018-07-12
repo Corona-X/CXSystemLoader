@@ -10,7 +10,7 @@
 #include <Corona-X.h>
 #include <SystemLoader/SLBase.h>
 
-#define kSLMemoryAllocatorDefaultPoolSize    (1 << 26)
+#define kSLMemoryAllocatorDefaultPoolSize    (1 << 23)
 #define kSLMemoryAllocatorPoolAlignment      16
 #define kSLMemoryAllocatorAllocAlignment     16
 
@@ -50,7 +50,7 @@ typedef struct {
     OSPrivate OSAddress SLReallocate(OSAddress object, OSSize newSize);
     OSPrivate void SLFree(OSAddress object);
 
-    OSExport SLMemoryPool gSLPoolInfo;
+    OSExport SLMemoryPool gSLMainPoolInfo;
     OSExport SLHeap gSLCurrentHeap;
 
     #if kCXBuildDev

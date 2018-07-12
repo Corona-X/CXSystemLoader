@@ -12,7 +12,7 @@ OSPrivate OSAddress SLExpandHeap(OSCount moreBytes);
 OSPrivate OSAddress SLAllocateInPool(SLMemoryPool *pool, OSSize size);
 OSPrivate void SLFreeInPool(SLMemoryPool *pool, OSAddress object, OSSize objectSize);
 
-SLMemoryPool gSLPoolInfo = {
+SLMemoryPool gSLMainPoolInfo = {
     .address = kOSNullPointer,
     .size = 0,
     .usedSize = 0,
@@ -43,7 +43,7 @@ OSAddress SLMemoryAllocatorInit(void)
     OSAddress newHeap = SLBootServicesAllocateAnyPages(newHeapSize);
 
     if (newHeap) {
-        SLMemoryAllocatorSetHeap(newHeap, newHeapSize);
+        SLMemoryAllocatorSetHeap(newHeap, newHeapSize << kSLBootPageShift);
         gSLCurrentHeap.shouldFree = true;
     } else {
         #if kCXBuildDev
@@ -140,6 +140,7 @@ OSAddress SLAllocateInPool(SLMemoryPool *pool, OSSize size)
         }
     }
 
+    // We don't have space for that size...
     return kOSNullPointer;
 }
 
@@ -244,7 +245,7 @@ bool SLDoesOwnMemory(OSAddress object)
 {
     OSSize size = SLGetObjectSize(object);
 
-    return ((object >= gSLPoolInfo.address) && ((object + size) <= (gSLPoolInfo.address + gSLPoolInfo.size)));
+    return ((object >= gSLMainPoolInfo.address) && ((object + size) <= (gSLMainPoolInfo.address + gSLMainPoolInfo.size)));
 }
 
 OSAddress SLAllocate(OSSize size)
@@ -265,7 +266,7 @@ OSAddress SLAllocate(OSSize size)
 
     OSAddress result;
 
-    while (!(result = SLAllocateInPool(&gSLPoolInfo, allocSize)))
+    while (!(result = SLAllocateInPool(&gSLMainPoolInfo, allocSize)))
     {
         OSCount extendCount = OSAlignUpward(allocSize, kSLBootPageSize);
         OSAddress heapBase = SLExpandHeap(extendCount);
@@ -276,8 +277,8 @@ OSAddress SLAllocate(OSSize size)
             return kOSNullPointer;
         }
 
-        SLExpandPool(&gSLPoolInfo, extendCount, heapBase);
-        SLFreeInPool(&gSLPoolInfo, heapBase, extendCount);
+        SLExpandPool(&gSLMainPoolInfo, extendCount, heapBase);
+        SLFreeInPool(&gSLMainPoolInfo, heapBase, extendCount);
     }
 
     (*((OSSize *)result)) = allocSize;
@@ -310,7 +311,7 @@ OSAddress SLReallocate(OSAddress object, OSSize newSize)
     if (!newObject) return kOSNullPointer;
 
     XKMemoryCopy(object, newObject, size - sizeof(OSSize));
-    SLFreeInPool(&gSLPoolInfo, sizePointer, size);
+    SLFreeInPool(&gSLMainPoolInfo, sizePointer, size);
 
     return newObject;
 }
@@ -336,7 +337,7 @@ void SLFree(OSAddress object)
         return;
     }
 
-    SLFreeInPool(&gSLPoolInfo, sizePointer, size);
+    SLFreeInPool(&gSLMainPoolInfo, sizePointer, size);
 
     #if kCXBuildDev
         gSLMemoryFreeCount++;

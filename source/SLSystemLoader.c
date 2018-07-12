@@ -31,7 +31,7 @@ UInt64 SLIsSystemPartition(SLBlockIO *blockDevice)
     if (blockDevice->media->blockSize > kSLBootPageSize)
         return 0;
 
-    if (!SLBlockIOReadBlocks(blockDevice, 0, gSLInitialBlockBuffer, blockDevice->media->blockSize))
+    if (!SLBlockIORead(blockDevice, 0, gSLInitialBlockBuffer, blockDevice->media->blockSize))
         return 0;
 
     if (XKMemoryCompare(gSLInitialBlockBuffer, kCAHeaderMagic, 4))
@@ -48,6 +48,13 @@ UInt64 SLIsSystemPartition(SLBlockIO *blockDevice)
 
 void SLPrintSystemVersionInfo(CASystemVersionInternal *version)
 {
+    if (!version)
+    {
+        SLPrintString("Error\n");
+
+        return;
+    }
+
     UInt32 majorVersion = version->majorVersion;
     UInt8 revision = version->revision + 'A';
     UInt64 buildID = version->buildID;
@@ -81,15 +88,18 @@ SLFileLocator SLLocateFile(CAHeaderSystemImage *header, SLBlockIO *device, const
     SLFileLocator file = { .present = false };
 
     // TODO: Handle large ToC/Entry Table
-    OSOffset *toc = SLAllocate(header->dataSectionOffset - header->tocOffset);
-    OSAddress entryTable = ((UInt8 *)toc) + entryOffset;
-    if (!toc) return file;
+    OSSize readSize = header->dataSectionOffset - header->tocOffset;
+    OSAddress buffer = SLAllocate(readSize);
+    if (!buffer) return file;
 
-    if (!SLBlockIOReadBlocks(device, lba, toc, SLGetObjectSize(toc)))
+    if (!SLBlockIORead(device, lba, buffer, readSize))
     {
-        SLFree(toc);
+        SLFree(buffer);
         return file;
     }
+
+    OSAddress entryTable = buffer + entryOffset;
+    OSOffset *toc = buffer;
 
     for (OSIndex i = 0; (UInt64)i < entryCount; i++)
     {
@@ -121,13 +131,13 @@ SLFileLocator SLLocateFile(CAHeaderSystemImage *header, SLBlockIO *device, const
                 file.size = realEntry->dataSize;
                 file.present = true;
 
-                SLFree(toc);
+                SLFree(buffer);
                 return file;
             }
         }
     }
 
-    SLFree(toc);
+    SLFree(buffer);
     return file;
 }
 
@@ -153,7 +163,7 @@ CAHeaderBootX *SLLoadBootX(SLFileLocator file, SLBlockIO *device)
     // Align so that the first byte on the second page is the start of the archive header
     OSAddress readAddress = buffer + (kSLBootPageSize - precedingBytes);
 
-    if (!SLBlockIOReadBlocks(device, lba, readAddress, blockSize))
+    if (!SLBlockIORead(device, lba, readAddress, blockSize))
     {
         SLBootServicesFreePages(buffer, pageCount);
         return kOSNullPointer;
@@ -273,10 +283,11 @@ void SLLoadSystemOrLeave(SLBlockIO *blockDevice)
     CAHeaderSystemImage *header = SLAllocate(blockDevice->media->blockSize);
     if (!header) SLLeave(kSLStatusLoadError);
 
-    if (!SLBlockIOReadBlocks(blockDevice, 0, header, blockDevice->media->blockSize))
+    if (!SLBlockIORead(blockDevice, 0, header, blockDevice->media->blockSize))
         SLLeave(kSLStatusLoadError);
 
     SLFileLocator bootLocator = SLLocateFile(header, blockDevice, kSLLoaderBootArchivePath);
+    SLPrintString("%p\n", bootLocator);
 
     if (bootLocator.present) {
         SLPrintString("Found '%s'. Data Offset: %zu, Size: %zu\n", kSLLoaderBootArchivePath, bootLocator.offset, bootLocator.size);

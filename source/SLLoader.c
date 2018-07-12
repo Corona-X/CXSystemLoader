@@ -54,6 +54,7 @@ static SLBlockIO *SLSelectSystemDevice(SLBlockIO **blockDevices, OSCount count)
         }
     }
 
+    SLPrintString("Selected system on device %u\n", selectedOffset);
     SLFree(hasSystem);
     return selected;
 }

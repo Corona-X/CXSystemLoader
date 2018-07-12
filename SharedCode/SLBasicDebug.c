@@ -14,12 +14,12 @@ void SLMemoryAllocatorDumpHeapInfo(void)
 void SLMemoryAllocatorDumpMainPool(void)
 {
     SLPrintString("Pool Info:\n");
-    SLPrintString("Base Address: %p\n", gSLPoolInfo.address);
-    SLPrintString("Size: %u/%u ",       gSLPoolInfo.usedSize, gSLPoolInfo.size);
-    SLPrintString("(0x%zX/0x%zX)\n",    gSLPoolInfo.usedSize, gSLPoolInfo.size);
+    SLPrintString("Base Address: %p\n", gSLMainPoolInfo.address);
+    SLPrintString("Size: %u/%u ",       gSLMainPoolInfo.usedSize, gSLMainPoolInfo.size);
+    SLPrintString("(0x%zX/0x%zX)\n",    gSLMainPoolInfo.usedSize, gSLMainPoolInfo.size);
     SLPrintString("Node List:\n");
 
-    SLMemoryNode *node = gSLPoolInfo.head;
+    SLMemoryNode *node = gSLMainPoolInfo.head;
     OSCount spaces = 0;
 
     while (node)
