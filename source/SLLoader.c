@@ -2,15 +2,20 @@
 #include <Kernel/C/XKMemory.h>
 
 // TODO: SLRuntimeServices.h/c
-// TODO: Mach-O Loader
 // TODO: SLConfigFile.c
 // TODO: Test on a real machine!
 
 static SLBlockIO *SLSelectSystemDevice(SLBlockIO **blockDevices, OSCount count)
 {
     bool *hasSystem = SLAllocate(count * sizeof(bool));
-    SLPrintString("Detecting systems...\n");
+    SLPrintString("Detecting installed systems...\n");
     OSCount systemCount = 0;
+
+    if (!hasSystem)
+    {
+        SLPrintString("Error: Could not allocate memory.\n");
+        return kOSNullPointer;
+    }
 
     for (OSIndex i = 0; (UInt64)i < count; i++)
     {
@@ -34,15 +39,21 @@ static SLBlockIO *SLSelectSystemDevice(SLBlockIO **blockDevices, OSCount count)
 
     if (!systemCount) {
         SLPrintString("No systems found.\n");
-        SLBootConsoleReadKey(true);
+        SLFree(hasSystem);
 
-        return kOSNullPointer;
+        SLLeave(kSLStatusSuccess);
     } else if (systemCount == 1) {
         // Wow this is easy...
         selectedIndex = 0;
     } else {
-        // TODO: Get the user to pick a system
-        selectedIndex = 0;
+        bool success;
+        selectedIndex = SLBootConsoleReadNumber(10, &success);
+
+        if (!success)
+        {
+            SLPrintString("Loading system #1...\n");
+            selected = 0;
+        }
     }
 
     for (OSIndex i = 0; (UInt64)i < count; i++)
@@ -75,7 +86,8 @@ SLStatus CXSystemLoaderMain(OSUnused OSAddress imageHandle, OSUnused SLSystemTab
 
         return kSLStatusLoadError;
     } else {
-        SLPrintString("Found %u block devices.\n", count);
+        if (kCXBuildDev)
+            SLPrintString("Found %u block devices.\n", count);
 
         SLBlockIO *selected = SLSelectSystemDevice(blockDevices, count);
         SLFree(blockDevices);
@@ -85,6 +97,8 @@ SLStatus CXSystemLoaderMain(OSUnused OSAddress imageHandle, OSUnused SLSystemTab
         if (!selected)
         {
             SLPrintString("Error: Could not find the selected system!\n");
+            SLBootConsoleReadKey(true);
+
             return kSLStatusNotFound;
         }
 

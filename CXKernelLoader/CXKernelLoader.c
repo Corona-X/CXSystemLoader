@@ -27,7 +27,7 @@ void SLSetupMem0(void)
 void CXKernelLoaderMain(void)
 {
     // This function isn't implemented yet...
-    //SLPrintString("Entered CXKernelLoader!\n");
+    SLPrintString("Entered CXKernelLoader!\n");
     //SLPrintString("BootX.car loaded at %p\n", gSLBootXAddress);
 
     // Set First KiB of RAM to System Info (Below legacy BIOS data area)
@@ -35,7 +35,9 @@ void CXKernelLoaderMain(void)
 
     // Okay okay okay. So this *should* not return.
     // HOWEVER, for debugging purposes, this returns.
-    return;
+    //return;
+
+    for ( ; ; ) ;
 }
 
 void SLLeave(OSUnused SLStatus status)

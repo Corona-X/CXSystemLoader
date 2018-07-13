@@ -8,4 +8,4 @@ __attribute__((section("__DATA,__data"))) bool gSLBootServicesEnabled;
 __attribute__((section("__DATA,__data"))) OSAddress gSLBootXAddress;
 
 // This symbol is always true in this binary regardless of its true-ness
-bool gSLBootConsoleIsInitialized = true;
+//bool gSLBootConsoleIsInitialized = true;

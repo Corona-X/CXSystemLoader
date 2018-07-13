@@ -10,28 +10,29 @@
 #define kSLSymbolCount      4
 #define kSLBlockSize        512
 
-OSPrivate UInt8 gSLInitialBlockBuffer[kSLBootPageSize];
-
 typedef struct {
+    OSUTF8Char *path;
     OSOffset offset;
     OSSize size;
 
     bool present;
 } SLFileLocator;
 
-OSPrivate SLFileLocator SLLocateFile(CAHeaderSystemImage *header, SLBlockIO *device, const OSUTF8Char *path);
+OSPrivate SLFileLocator SLLocateBootX(CAHeaderSystemImage *header, SLBlockIO *device);
 OSPrivate CAHeaderBootX *SLLoadBootX(SLFileLocator file, SLBlockIO *device);
 OSPrivate bool SLValidateBootX(CAHeaderBootX *header, OSSize size);
 OSPrivate SLFileLocator SLLocateKernelLoader(CAHeaderBootX *header);
-OSPrivate void SLRunKernelLoader(OSAddress base, SLFileLocator locator);
+OSPrivate OSNoReturn void SLRunKernelLoader(OSAddress base, SLFileLocator locator);
+
+OSPrivate UInt8 gSLInitialBlockBuffer[kSLBlockSize];
 
 // TODO: At least validate the header...
 UInt64 SLIsSystemPartition(SLBlockIO *blockDevice)
 {
-    if (blockDevice->media->blockSize > kSLBootPageSize)
+    if (blockDevice->media->blockSize != kSLBlockSize)
         return 0;
 
-    if (!SLBlockIORead(blockDevice, 0, gSLInitialBlockBuffer, blockDevice->media->blockSize))
+    if (!SLBlockIORead(blockDevice, 0, gSLInitialBlockBuffer, kSLBlockSize))
         return 0;
 
     if (XKMemoryCompare(gSLInitialBlockBuffer, kCAHeaderMagic, 4))
@@ -50,8 +51,7 @@ void SLPrintSystemVersionInfo(CASystemVersionInternal *version)
 {
     if (!version)
     {
-        SLPrintString("Error\n");
-
+        SLPrintString("<Error>\n");
         return;
     }
 
@@ -80,62 +80,44 @@ void SLPrintSystemVersionInfo(CASystemVersionInternal *version)
     SLPrintString("). Build ID 0x%012X", buildID);
 }
 
-SLFileLocator SLLocateFile(CAHeaderSystemImage *header, SLBlockIO *device, const OSUTF8Char *path)
+SLFileLocator SLLocateBootX(CAHeaderSystemImage *header, SLBlockIO *device)
 {
-    OSOffset entryOffset = header->entryTableOffset - header->tocOffset;
-    OSCount entryCount = (entryOffset - sizeof(UInt32)) / sizeof(OSOffset);
-    OSOffset lba = header->tocOffset / kSLBlockSize;
+    OSAddress buffer = SLAllocate(kSLBlockSize);
     SLFileLocator file = { .present = false };
 
-    // TODO: Handle large ToC/Entry Table
-    OSSize readSize = header->dataSectionOffset - header->tocOffset;
-    OSAddress buffer = SLAllocate(readSize);
-    if (!buffer) return file;
+    // There's no boot archive here!
+    if (!(~header->bootEntry) || !buffer)
+        return file;
 
-    if (!SLBlockIORead(device, lba, buffer, readSize))
+    OSOffset tocOffset = header->bootEntry * sizeof(OSOffset);
+    OSOffset realOffset = header->tocOffset + tocOffset;
+    OSOffset lba = OSAlignDown(realOffset, kSLBlockSize);
+    OSOffset readOffset = realOffset - lba;
+
+    if (!SLBlockIORead(device, lba / kSLBlockSize, buffer, kSLBlockSize))
     {
         SLFree(buffer);
         return file;
     }
 
-    OSAddress entryTable = buffer + entryOffset;
-    OSOffset *toc = buffer;
+    UInt64 entryOffset = *((UInt64 *)(buffer + readOffset));
+    realOffset = header->entryTableOffset + entryOffset;
+    lba = OSAlignDown(realOffset, kSLBlockSize);
+    readOffset = realOffset - lba;
 
-    for (OSIndex i = 0; (UInt64)i < entryCount; i++)
+    if (!SLBlockIORead(device, lba / kSLBlockSize, buffer, kSLBlockSize))
     {
-        UInt8 *entry = entryTable + toc[i];
-        if (i && !toc[i]) break;
-
-        if (kCXDebug)
-        {
-            switch (*entry)
-            {
-                case kCAEntryTypeDirectory: {
-                    CASystemDirectoryEntry *realEntry = entry;
-                    SLPrintString("D %s\n", realEntry->path);
-                } break;
-                case kCAEntryTypeFile: {
-                    CASystemFileEntry *realEntry = entry;
-                    SLPrintString("F %s\n", realEntry->path);
-                } break;
-            }
-        }
-
-        if ((*entry) == kCAEntryTypeFile)
-        {
-            CASystemFileEntry *realEntry = entry;
-
-            if (!XKStringCompare8(realEntry->path, path))
-            {
-                file.offset = header->dataSectionOffset + realEntry->dataOffset;
-                file.size = realEntry->dataSize;
-                file.present = true;
-
-                SLFree(buffer);
-                return file;
-            }
-        }
+        SLFree(buffer);
+        return file;
     }
+
+    CASystemFileEntry *entry = buffer + readOffset;
+    file.offset = header->dataSectionOffset + entry->dataOffset;
+    file.size = entry->dataSize;
+    file.path = entry->path;
+
+    if (entry->type == kCAEntryTypeFile)
+        file.present = true;
 
     SLFree(buffer);
     return file;
@@ -143,14 +125,15 @@ SLFileLocator SLLocateFile(CAHeaderSystemImage *header, SLBlockIO *device, const
 
 CAHeaderBootX *SLLoadBootX(SLFileLocator file, SLBlockIO *device)
 {
-    if (!file.present) return kOSNullPointer;
-
     OSOffset blockOffset = OSAlignDown(file.offset, kSLBlockSize);
     OSSize precedingBytes = blockOffset - file.offset;
     OSOffset lba = blockOffset / kSLBlockSize;
 
     OSSize blockSize = OSAlignUpward(file.size, kSLBlockSize);
     OSCount pageCount = (blockSize >> kSLBootPageShift) + 1;
+
+    if (blockSize & kSLBootPageMask)
+        pageCount++;
 
     OSAddress buffer = SLBootServicesAllocateAnyPages(pageCount);
 
@@ -169,6 +152,7 @@ CAHeaderBootX *SLLoadBootX(SLFileLocator file, SLBlockIO *device)
         return kOSNullPointer;
     }
 
+    // Return the second page where we put the header
     return (CAHeaderBootX *)(buffer + kSLBootPageSize);
 }
 
@@ -197,21 +181,24 @@ SLFileLocator SLLocateKernelLoader(CAHeaderBootX *header)
     CAEntryS2 *entry = ((OSAddress)header) + header->entryTableOffset + toc[header->kernelLoaderEntry];
     file.offset = header->dataSectionOffset + entry->dataOffset;
     file.size = entry->dataSize;
-    file.present = true;
+    file.path = entry->path;
+
+    if (entry->type == kCAEntryTypeFile)
+        file.present = true;
 
     return file;
 }
 
-void SLRunKernelLoader(OSAddress base, SLFileLocator locator)
+OSNoReturn void SLRunKernelLoader(OSAddress base, SLFileLocator locator)
 {
-    if (!locator.present) return;
-
-    SLMachOFile *loader = SLMachOProcess(base + locator.offset, locator.size);
+    SLMachOFile *loader = SLMachOFileOpenMapped(base + locator.offset, locator.size);
 
     if (!loader)
     {
-        SLPrintString("Error processing kernel loader!\n");
-        return;
+        SLPrintString("Error: Could not open Kernel Loader.\n");
+        SLBootConsoleReadKey(true);
+
+        SLLeave(kSLStatusLoadError);
     }
 
     // These get mangled somehow someway,
@@ -230,7 +217,6 @@ void SLRunKernelLoader(OSAddress base, SLFileLocator locator)
         &base
     };
 
-    SLPrintString("%p", gSLLoaderSystemTable);
     const OSSize sizes[kSLSymbolCount] = {
         sizeof(OSAddress),
         sizeof(OSAddress),
@@ -238,87 +224,84 @@ void SLRunKernelLoader(OSAddress base, SLFileLocator locator)
         sizeof(OSAddress)
     };
 
-    OSCount replaced = SLMachOReplaceSymbols(loader, symbols, kSLSymbolCount, values, sizes);
+    OSCount replaced = SLMachOSetSymbolValues(loader, symbols, kSLSymbolCount, values, sizes);
 
     if (replaced != kSLSymbolCount)
     {
-        SLPrintString("Error replacing symbols.\n");
-        return;
-    }
+        SLPrintString("Error: Could not pass parameters to Kernel Loader.\n");
+        SLBootConsoleReadKey(true);
 
-    UInt8 nullValue = 0xBB;
-    XKMemoryCopy(&nullValue, kOSNullPointer, 1);
+        SLLeave(kSLStatusLoadError);
+    }
 
     SLMachOExecute(loader);
-    XKMemoryCopy(kOSNullPointer, &nullValue, 1);
-
-    if (nullValue == 0xC1)
-    {
-        const OSUTF8Char *systemInfo = 0x1;
-
-        SLPrintString("Kernel Loader ran Successfully. System in RAM is as follows:\n");
-        SLPrintString("%s\n", systemInfo);
-
-        SLBootConsoleReadKey(true);
-        SLLeave(kSLStatusSuccess);
-    }
-
-    return;
 }
 
 void SLLoadSystemOrLeave(SLBlockIO *blockDevice)
 {
-    if (blockDevice->media->blockSize < 512)
+    CAHeaderSystemImage *header = SLAllocate(kSLBlockSize);
+
+    if (!header)
     {
-        SLPrintString("Block Size is too small!\n");
+        SLPrintString("Error: Couldn't allocate memory.\n");
+        SLBootConsoleReadKey(true);
+
         SLLeave(kSLStatusLoadError);
     }
 
-    if (blockDevice->media->blockSize != 512 && blockDevice->media->blockSize != 4098)
+    if (!SLBlockIORead(blockDevice, 0, header, kSLBlockSize))
     {
-        SLPrintString("Bad Block Size!\n");
+        SLPrintString("Error: Couldn't read device.\n");
+        SLBootConsoleReadKey(true);
+
         SLLeave(kSLStatusLoadError);
     }
 
-    CAHeaderSystemImage *header = SLAllocate(blockDevice->media->blockSize);
-    if (!header) SLLeave(kSLStatusLoadError);
-
-    if (!SLBlockIORead(blockDevice, 0, header, blockDevice->media->blockSize))
-        SLLeave(kSLStatusLoadError);
-
-    SLFileLocator bootLocator = SLLocateFile(header, blockDevice, kSLLoaderBootArchivePath);
-    SLPrintString("%p\n", bootLocator);
+    SLFileLocator bootLocator = SLLocateBootX(header, blockDevice);
 
     if (bootLocator.present) {
-        SLPrintString("Found '%s'. Data Offset: %zu, Size: %zu\n", kSLLoaderBootArchivePath, bootLocator.offset, bootLocator.size);
+        if (kCXBuildDev)
+            SLPrintString("Found BootX at %s. Data Offset: %zu, Size: %zu\n", kSLLoaderBootArchivePath, bootLocator.offset, bootLocator.size);
+
         CAHeaderBootX *bootX = SLLoadBootX(bootLocator, blockDevice);
 
-        if (!bootX || !SLValidateBootX(bootX, bootLocator.size))
+        if (!bootX)
         {
-            SLPrintString("Could not load BootX.car!\n");
+            SLPrintString("Error: Could not load BootX.car.\n");
             SLBootConsoleReadKey(true);
 
             SLLeave(kSLStatusLoadError);
         }
 
-        SLPrintString("Loaded Boot-X Archive at address %p\n", bootX);
+        if (!SLValidateBootX(bootX, bootLocator.size))
+        {
+            SLPrintString("Error: BootX is not a valid archive.\n");
+            SLBootConsoleReadKey(true);
+
+            SLLeave(kSLStatusLoadError);
+        }
+
+        if (kCXBuildDev)
+            SLPrintString("Boot-X Archive successfully loaded at address %p\n", bootX);
+
         SLFileLocator kernelLoader = SLLocateKernelLoader(bootX);
 
         if (!kernelLoader.present)
         {
-            SLPrintString("Could not find Kernel Loader!\n");
+            SLPrintString("Error: Could not locate Kernel Loader.\n");
             SLBootConsoleReadKey(true);
 
             SLLeave(kSLStatusLoadError);
         }
 
-        SLPrintString("Kernel Loader %zu from start\n", kernelLoader.offset);
-        SLRunKernelLoader(bootX, kernelLoader);
-        SLPrintString("Could not run Kernel Loader!\n");
-    } else {
-        SLPrintString("Could not find '%s'!\n", kSLLoaderBootArchivePath);
-    }
+        if (kCXBuildDev)
+            SLPrintString("Kernel Loader %zu from start of BootX at %p\n", kernelLoader.offset, ((OSAddress)bootX) + kernelLoader.offset);
 
-    SLBootConsoleReadKey(true);
-    SLLeave(kSLStatusLoadError);
+        SLRunKernelLoader(bootX, kernelLoader);
+    } else {
+        SLPrintString("Could not locate BootX.\n");
+        SLBootConsoleReadKey(true);
+
+        SLLeave(kSLStatusLoadError);
+    }
 }

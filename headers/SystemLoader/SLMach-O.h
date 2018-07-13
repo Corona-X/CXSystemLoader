@@ -11,27 +11,33 @@
 #include <SystemLoader/SLBase.h>
 #include <System/Executables/OSMach-O.h>
 
+// 8 MB stack by default
+#define kSLMachODefaultStackSize (1 << 23)
+
 typedef struct {
     OSAddress base;
     OSSize size;
 
     OSMOHeader *header;
-    OSCount sectionCount;
-    OSOffset symbolOffset;
-    OSCount symbolCount;
-    OSOffset stringOffset;
 
-    OSAddress activateBase;
-    OSSize virtualSize;
+    OSIndex dataSectionIndex;
+    OSOffset symbolTableOffset;
+    OSCount symbolCount;
+    OSOffset stringsOffset;
+    OSSize stringsSize;
+
+    OSAddress stackAddress;
+    OSSize stackSize;
+
+    OSAddress loadAddress;
+    OSSize loadedSize;
 
     OSMOThreadStateNative *entryPoint;
 } SLMachOFile;
 
-OSPrivate SLMachOFile *SLMachOProcess(OSAddress base, OSSize size);
-OSPrivate void SLMachOClose(SLMachOFile *file);
-
-OSPrivate bool SLMachOValidate(SLMachOFile *file);
-OSPrivate OSInteger SLMachOReplaceSymbols(SLMachOFile *file, const OSUTF8Char *const *symbols, OSCount count, const OSAddress *const *values, OSSize *symbolSizes);
-OSPrivate void SLMachOExecute(SLMachOFile *file);
+OSPrivate SLMachOFile *SLMachOFileOpenMapped(OSAddress base, OSSize size);
+OSPrivate OSInteger SLMachOSetSymbolValues(SLMachOFile *file, const OSUTF8Char *const *symbols, OSCount count, const OSAddress *const *values, OSSize *symbolSizes);
+OSPrivate OSNoReturn void SLMachOExecute(SLMachOFile *file);
+OSPrivate void SLMachOFileClose(SLMachOFile *file);
 
 #endif /* !defined(__SYSTEMLOADER_SLMACHO__) */

@@ -14,6 +14,7 @@
 
 #define kSLBootPageShift                12
 #define kSLBootPageSize                 4096
+#define kSLBootPageMask                 0xFFF
 
 #if !kCXAssemblyCode
 

@@ -8,7 +8,8 @@ OSPrivate static void SLPrintNumber(UInt64 *n, bool isSigned, UInt8 base, UInt8 
 OSUTF16Char gSLPrintBuffer[kSLBootPageSize];
 OSIndex gSLPrintBufferIndex = 0;
 
-// Just Print to UEFI (with a buffer)
+// Just Print to UEFI
+// This uses a buffer which is flushed on newlines
 void SLPrintCharacter(const OSUTF8Char character)
 {
     gSLPrintBuffer[gSLPrintBufferIndex++] = character;

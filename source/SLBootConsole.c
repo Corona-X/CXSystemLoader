@@ -86,6 +86,45 @@ UInt16 SLBootConsoleReadKey(bool shouldBlock)
     return key.keycode;
 }
 
+UInt64 SLBootConsoleReadNumber(UInt8 base, bool *success)
+{
+    if (base != 10)
+    {
+        // Case not implemented
+        SLPrintString("Function %s called with invalid base %u. This functionality is NOT implemented.\n", __func__, base);
+
+        if (success)
+            (*success) = false;
+
+        return 0;
+    }
+
+    UInt64 result = 0;
+    UInt16 keycode;
+
+    while ((keycode = SLBootConsoleReadKey(true)) != '\n')
+    {
+        if (keycode < '0' || keycode > '9')
+        {
+            // Invalid input;
+            SLPrintString("\nInvalid Input.\n");
+
+            if (success)
+                (*success) = false;
+
+            return 0;
+        }
+
+        result *= 10;
+        result += keycode;
+    }
+
+    if (success)
+        (*success) = true;
+
+    return result;
+}
+
 #pragma mark - Output Console
 
 SLConsoleOutput *SLBootConsoleGetOutput(void)
