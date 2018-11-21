@@ -325,34 +325,3 @@ OSNoReturn void SLLeave(SLStatus status)
     else
         SLRuntimeServicesResetSystem(kSLResetTypeShutdown, status, kOSNullPointer);
 }
-
-#if 0
-
-In this section is pieces of code which have been removed from CXSystemLoader.
-They must be reimplemented properly into the kernel loader.
-
-From EFI/SLSystemTable.c:
-
-OSPrivate CPRootDescriptor *SLSystemTableGetACPIRoot(SLSystemTable *table);
-
-CPRootDescriptor *SLSystemTableGetACPIRoot(SLSystemTable *table)
-{
-    CPRootDescriptor *root = kOSNullPointer;
- 
-    for (OSIndex i = 0; i < table->numberOfConfigTables; i++)
-    {
-        SLConfigTable *configTable = &table->configTables[i];
-        OSUIDIntelData acpiTableID = kSLACPITableID;
- 
-        if (!XKMemoryCompare(&configTable->id, &acpiTableID, sizeof(OSUIDIntelData)))
-            root = configTable->pointer;
-    }
- 
-    if (root && CPRootDescriptorValidate(root)) {
-        return root;
-    } else {
-        return kOSNullPointer;
-    }
-}
-
-#endif

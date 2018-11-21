@@ -1,21 +1,13 @@
 #include <SystemLoader/Kernel/SLVideo.h>
 
-#include <Kernel/Shared/XKDebugLog.h>
+#include <Kernel/Shared/XKBootConfig.h>
 #include <Kernel/C/XKMemory.h>
 
 #include <SystemLoader/EFI/SLBootServices.h>
 #include <SystemLoader/SLMemoryAllocator.h>
 #include <SystemLoader/SLLibrary.h>
 
-OSPrivate XKGraphicsContext *SLGraphicsOutputGetContext(SLGraphicsOutput *graphics);
-OSPrivate XKGraphicsContext *SLGraphicsOutputGetContextWithMaxSize(SLGraphicsOutput *graphics, UInt32 maxHeight, UInt32 maxWidth);
-
-XKGraphicsContext *SLGraphicsOutputGetContext(SLGraphicsOutput *graphics)
-{
-    return SLGraphicsOutputGetContextWithMaxSize(graphics, ~((UInt32)0), ~((UInt32)0));
-}
-
-XKGraphicsContext *SLGraphicsOutputGetContextWithMaxSize(SLGraphicsOutput *graphics, UInt32 maxHeight, UInt32 maxWidth)
+SLGraphicsContext *SLGraphicsOutputGetContextWithMaxSize(SLGraphicsOutput *graphics, UInt32 maxHeight, UInt32 maxWidth)
 {
     SLBootServicesCheck(kOSNullPointer);
 
@@ -66,7 +58,7 @@ XKGraphicsContext *SLGraphicsOutputGetContextWithMaxSize(SLGraphicsOutput *graph
     if (SLStatusIsError(status)) return kOSNullPointer;
     SLGraphicsMode *mode = SLGraphicsOutputGetCurrentMode(graphics);
 
-    XKGraphicsContext *context = SLAllocate(sizeof(XKGraphicsContext));
+    SLGraphicsContext *context = SLAllocate(sizeof(SLGraphicsContext));
     context->height = mode->info->height;
     context->width = mode->info->width;
     context->framebuffer = mode->framebuffer;
@@ -77,12 +69,14 @@ XKGraphicsContext *SLGraphicsOutputGetContextWithMaxSize(SLGraphicsOutput *graph
     return context;
 }
 
+SLGraphicsContext *SLGraphicsOutputGetContext(SLGraphicsOutput *graphics)
+{
+    return SLGraphicsOutputGetContextWithMaxSize(graphics, ~((UInt32)0), ~((UInt32)0));
+}
+
 #include "XKBootLogo.h"
 
-OSPrivate void SLDrawLogoInContext(XKGraphicsContext *context);
-OSPrivate void SLSetupVideo(void);
-
-void SLDrawLogoInContext(XKGraphicsContext *context)
+void SLDrawLogoInContext(SLGraphicsContext *context)
 {
     OSIndex y = (context->height - kXKBootLogoHeight) / 2;
     OSIndex x = (context->width - kXKBootLogoWidth) / 2;
@@ -103,17 +97,26 @@ void SLDrawLogoInContext(XKGraphicsContext *context)
 void SLSetupVideo(void)
 {
     SLGraphicsOutput **screens = SLGraphicsOutputGetAll(kOSNullPointer);
-    SLPrintString("We have screens at %p\n", screens);
 
-    if (!screens)
-    {
+    if (!screens) {
         SLPrintString("No output screens found!\n");
         return;
+    } else {
+        SLPrintString("We have screens at %p\n", screens);
     }
 
     SLGraphicsOutput *screen = *screens;
 
-    XKGraphicsContext *context = SLGraphicsOutputGetContextWithMaxSize(screen, 1400, 1050);
+    UInt32 height = (UInt32)XKBootConfigGetNumber(gXKBootConfig, kXKBootConfigKeyScreenHeightMax, 0);
+    UInt32 width = (UInt32)XKBootConfigGetNumber(gXKBootConfig, kXKBootConfigKeyScreenWidthMax, 0);
+
+    if (!height)
+        height = ~height;
+
+    if (!width)
+        width = ~width;
+
+    SLGraphicsContext *context = SLGraphicsOutputGetContextWithMaxSize(screen, width, height);
     if (!context) goto end;
 
     XKMemorySetValue(context->framebuffer, context->framebufferSize, 0xFF);
