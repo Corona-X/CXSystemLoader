@@ -11,11 +11,11 @@
 
 #define kCXLowMemoryString "Corona System " kCXSystemName " " kCXSystemRevision "." kCXSystemMajorVersion ""
 
+// Kill boot services
 // Setup IDT
 // Read SMBIOS
 // Setup ACPI
 // Determine Memory Size
-// Kill boot services
 // Map Memory in CR3
 // Map runtime services high
 // Update runtime services map
@@ -37,9 +37,8 @@ typedef struct {
 
         OSSize length;
 
+        bool isAvailable;
         bool isCorrupt;
-        bool isBoot;
-        bool isFree;
     } *zones;
 
     SLMemoryMap *bootloaderMap;
@@ -48,21 +47,20 @@ typedef struct {
     OSSize availableSize;
     OSSize corruptSize;
 
-    OSSize bootUsed;
     OSSize fullSize;
-} SLMemoryInfo;
+} SLMemoryZoneInfo;
 
 typedef struct __SLMemoryZone SLMemoryZone;
 
-OSPrivate SLMemoryInfo *SLReadMemoryMap(SLMemoryMap *map);
-OSPrivate void SLSetupMemoryInfo(void);
+OSPrivate SLMemoryZoneInfo *SLReadMemoryMap(SLMemoryMap *map);
+OSPrivate SLMemoryZoneInfo *SLMemoryZoneRead(SLMemoryMap *map);
 
-OSPrivate void SLDumpMemoryInfo(SLMemoryInfo *info);
+OSPrivate void SLDumpMemoryInfo(SLMemoryZoneInfo *info);
 OSPrivate void SLDumpMemoryMap(SLMemoryMap *map);
 
-SLMemoryInfo *SLReadMemoryMap(SLMemoryMap *map)
+SLMemoryZoneInfo *SLReadMemoryMap(SLMemoryMap *map)
 {
-    SLMemoryInfo *info = SLAllocate(sizeof(SLMemoryInfo));
+    SLMemoryZoneInfo *info = SLAllocate(sizeof(SLMemoryZoneInfo));
 
     if (!info)
     {
@@ -82,22 +80,21 @@ SLMemoryInfo *SLReadMemoryMap(SLMemoryMap *map)
     }
 
     XKMemoryZero(info->zones, map->entryCount * sizeof(SLMemoryZone));
-    OSIndex lastRegion = 0;
 
     for (OSIndex i = 0; ((OSCount)i) < map->entryCount; i++)
     {
         SLMemoryDescriptor *descriptor = &map->entries[i];
+
         OSSize length = descriptor->pageCount << kSLBootPageShift;
         OSIndex zoneIndex;
-        bool isReserved;
-        bool isCorrupt;
-        bool isBoot;
 
-        if (!descriptor->pageCount) {
+        bool isAvailable;
+        bool isCorrupt;
+
+        if (!descriptor->pageCount)
+        {
             SLPrintString("Warning: Empty descriptor (%u)\n", i);
             continue;
-        } else {
-            lastRegion = i;
         }
 
         if (descriptor->entryType == kSLMemoryTypeUnusable)
@@ -110,40 +107,29 @@ SLMemoryInfo *SLReadMemoryMap(SLMemoryMap *map)
             case kSLMemoryTypeReserved:
                 SLPrintString("Warning: Reserved memory type (%u, %u pages)\n", i, descriptor->pageCount);
 
-                isReserved = true;
-                isBoot = false;
+                isAvailable = false;
             break;
             case kSLMemoryTypeLoaderCode:
             case kSLMemoryTypeLoaderData:
             case kSLMemoryTypeBootCode:
             case kSLMemoryTypeBootData:
-                isReserved = false;
-                isBoot = true;
+                isAvailable = true;
             break;
             case kSLMemoryTypeRuntimeCode:
             case kSLMemoryTypeRuntimeData:
-                isReserved = true;
-                isBoot = false;
+                isAvailable = false;
             break;
             case kSLMemoryTypeFree:
-                isReserved = false;
-                isBoot = false;
-            break;
-            case kSLMemoryTypeUnusable:
-                isReserved = false;
-                isBoot = false;
-            break;
             case kSLMemoryTypeACPIReclaim:
-                isReserved = false;
-                isBoot = true;
+            case kSLMemoryTypeUnusable:
+                isAvailable = true;
             break;
             case kSLMemoryTypeACPINVS:
             case kSLMemoryTypeMappedIO:
             case kSLMemoryTypeMappedIOPorts:
             case kSLMemoryTypePALCode:
             case kSLMemorytypePersistent:
-                isReserved = true;
-                isBoot = false;
+                isAvailable = false;
             break;
             default:
                 SLPrintString("Warning: Invalid memory type (%u)\n", i);
@@ -155,7 +141,7 @@ SLMemoryInfo *SLReadMemoryMap(SLMemoryMap *map)
             SLMemoryZone *zone = &info->zones[zoneIndex];
             if (!zone->length) break;
 
-            if (zone->isBoot != isBoot || zone->isFree != !isReserved || zone->isCorrupt != isCorrupt)
+            if (zone->isAvailable != isAvailable || zone->isCorrupt != isCorrupt)
                 continue;
 
             if (zone->end == descriptor->physicalAddress)
@@ -175,51 +161,38 @@ SLMemoryInfo *SLReadMemoryMap(SLMemoryMap *map)
             zone->length = length;
             zone->end = zone->physical + zone->length;
 
+            zone->isAvailable = isAvailable;
             zone->isCorrupt = isCorrupt;
-            zone->isFree = !isReserved;
-            zone->isBoot = isBoot;
 
             info->zoneCount++;
         }
 
-        if (isBoot)
-            info->bootUsed += length;
-
         if (isCorrupt)
             info->corruptSize += length;
 
-        if (!isReserved)
+        if (isAvailable)
             info->availableSize += length;
 
         info->fullSize += length;
     }
 
-    OSAddress top = info->zones[lastRegion].end;
-    SLPrintString("Last Region: %u\n", lastRegion);
-    SLPrintString("Final Pointer: %p, Counted Memory: %p\n", top, info->fullSize);
+    OSAddress top = info->zones[info->zoneCount - 1].end;
 
     if (info->fullSize < (OSPointerValue)top)
-    {
         SLPrintString("Warning: Memory map has holes!\n");
-        SLPrintString("Adjusting max memory from %p --> %p\n", info->fullSize, top);
-
-        info->fullSize = (OSPointerValue)top;
-    }
 
     return info;
 }
 
-void SLSetupMemoryInfo(void)
+SLMemoryZoneInfo *SLMemoryZoneRead(SLMemoryMap *map)
 {
-    SLMemoryMap *map = SLBootServicesGetMemoryMap();
-
     if (!map)
     {
         SLPrintString("No map\n");
-        return;
+        return kOSNullPointer;
     }
 
-    SLMemoryInfo *info = SLReadMemoryMap(map);
+    SLMemoryZoneInfo *info = SLReadMemoryMap(map);
 
     if (!info)
     {
@@ -228,25 +201,20 @@ void SLSetupMemoryInfo(void)
         SLFree(map->entries);
         SLFree(map);
 
-        return;
+        return kOSNullPointer;
     }
 
     SLPrintString("Memory zone count: %zu\n", info->zoneCount);
     SLPrintString("Detected memory size: %zu\n", info->fullSize);
     SLPrintString("Available size: %zu\n", info->availableSize);
-    SLPrintString("Bootloader memory size: %zu\n", info->bootUsed);
     SLPrintString("Corrupted size: %zu\n", info->corruptSize);
 
     SLDumpMemoryInfo(info);
 
-    SLFree(info->bootloaderMap->entries);
-    SLFree(info->bootloaderMap);
-
-    SLFree(info->zones);
-    SLFree(info);
+    return info;
 }
 
-void SLDumpMemoryInfo(SLMemoryInfo *info)
+void SLDumpMemoryInfo(SLMemoryZoneInfo *info)
 {
     if (!info)
     {
@@ -259,9 +227,8 @@ void SLDumpMemoryInfo(SLMemoryInfo *info)
         OSAddress start = info->zones[i].physical;
         OSAddress end = info->zones[i].end;
 
-        SLPrintString("%02u: 0x%08X --> 0x%08X (%s%s%s)\n", i, start, end,
-            (info->zones[i].isBoot ? "boot, "     : ""),
-            (info->zones[i].isFree ? "free"     : ""),
+        SLPrintString("%02u: 0x%08X --> 0x%08X (%s%s)\n", i, start, end,
+            (info->zones[i].isAvailable ? "available" : ""),
             (info->zones[i].isCorrupt ? "corrupt" : "")
         );
     }
@@ -344,12 +311,8 @@ void CXKernelLoaderMain(OSUnused SLMachOFile *loadedImage)
     // Yay make the screen pretty :)
     SLSetupVideo();
 
-    SLMemoryMap *map = SLBootServicesGetMemoryMap();
-    SLDumpMemoryMap(map);
-    SLFree(map->entries);
-    SLFree(map);
-
-    SLSetupMemoryInfo();
+    SLMemoryMap *map = SLBootServicesTerminate();
+    SLMemoryZoneRead(map);
 
     SLSerialConsoleReadKey(true);
     SLLeave(kSLStatusSuccess);
@@ -367,18 +330,6 @@ OSNoReturn void SLLeave(SLStatus status)
 
 In this section is pieces of code which have been removed from CXSystemLoader.
 They must be reimplemented properly into the kernel loader.
-
-From SLMemoryAllocator.c:
-
-// On allocator initialization:
-OSPrivate void SLMemoryAllocatorOnBootServicesTerminate(SLMemoryMap *finalMemoryMap, OSAddress context);
-
-SLBootServicesRegisterTerminationFunction(SLMemoryAllocatorOnBootServicesTerminate, kOSNullPointer);
-
-void SLMemoryAllocatorOnBootServicesTerminate(OSUnused SLMemoryMap *finalMemoryMap, OSUnused OSAddress context)
-{
-    gSLCurrentHeap.shouldFree = false;
-}
 
 From EFI/SLSystemTable.c:
 
@@ -402,74 +353,6 @@ CPRootDescriptor *SLSystemTableGetACPIRoot(SLSystemTable *table)
     } else {
         return kOSNullPointer;
     }
-}
-
-From EFI/SLBootServices.c:
-
-OSPrivate void SLBootServicesRegisterTerminationFunction(void (*function)(SLMemoryMap *finalMap, OSAddress context), OSAddress context);
-
-typedef struct __SLBootServicesTerminateHandler {
-    void (*function)(SLMemoryMap *finalMap, OSAddress context);
-    OSAddress context;
-    struct __SLBootServicesTerminateHandler *next;
-} SLBootServicesTerminateHandler;
-
-SLBootServicesTerminateHandler *gSLBootServicesFirstHandler = kOSNullPointer;
-
-void SLBootServicesRegisterTerminationFunction(void (*function)(SLMemoryMap *finalMap, OSAddress context), OSAddress context)
-{
-    SLBootServicesCheck((void)(0));
-    
-    SLBootServicesTerminateHandler *newHandler = SLAllocate(sizeof(SLBootServicesTerminateHandler)).address;
-    SLBootServicesTerminateHandler *handler = gSLBootServicesFirstHandler;
-    
-    if (OSExpect(handler)) {
-        while (handler->next)
-            handler = handler->next;
-        
-        handler->next = newHandler;
-        handler = newHandler;
-    } else {
-        gSLBootServicesFirstHandler = handler = newHandler;
-    }
-    
-    handler->function = function;
-    handler->context = context;
-    handler->next = kOSNullPointer;
-}
-
-SLBootServicesTerminateHandler *handler = gSLBootServicesFirstHandler;
-XKLog(kXKLogLevelInfo, "Calling Boot Services Terminate Handlers...\n");
-
-while (handler)
-{
-    handler->function(finalMemoryMap, handler->context);
-    
-    SLBootServicesTerminateHandler *oldHandler = handler;
-    handler = handler->next;
-    SLFree(oldHandler);
-}
-
-XKLog(kXKLogLevelInfo, "All Handlers Called; Terminating Boot Services...");
-
-From EFI/SLFile.c:
-
-OSUTF16Char *SLPathToEFIPath(OSUTF8Char *path)
-{
-    OSSize copySize = XKUTF8Length(path) + 1;
-    OSUTF8Char *copy = SLAllocate(copySize).address;
-    XKMemoryCopy(path, copy, copySize);
-    
-    for (OSIndex i = 0; i < (copySize - 1); i++)
-    {
-        if (copy[i] == '/')
-            copy[i] = '\\';
-    }
-    
-    OSUTF16Char *efiPath = XKUTF8ToUTF16(copy);
-    SLFree(copy);
-    
-    return efiPath;
 }
 
 #endif

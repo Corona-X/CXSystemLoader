@@ -50,6 +50,7 @@ typedef struct {
     OSPrivate OSSize SLMemoryAllocatorGetCurrentHeapSize(void);
     OSPrivate OSAddress SLMemoryAllocatorGetHeapAddress(void);
     OSPrivate OSSize SLMemoryAllocatorGetHeapSize(void);
+    OSPrivate void SLMemoryAllocatorOnTerminateBoot(void);
 
     OSPrivate OSSize SLGetObjectSize(OSAddress object);
     OSPrivate bool SLDoesOwnMemory(OSAddress object);

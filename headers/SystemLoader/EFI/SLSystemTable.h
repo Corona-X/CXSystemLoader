@@ -41,6 +41,10 @@ typedef struct {
     OSPrivate SLSystemTable *SLSystemTableGetCurrent(void);
 
     OSPrivate OSAddress SLSystemTableLocateConfigTable(SLProtocol tableID);
+
+    #if kCXBuildDev
+        OSPrivate void SLSystemTableDumpConfigTables(SLSystemTable *table);
+    #endif /* kCXBuildDev */
 #endif /* kCXBootloaderCode || kCXKernelCode */
 
 #endif /* !kCXAssemblyCode */

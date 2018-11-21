@@ -64,34 +64,7 @@ bool SLGraphicsOutputDumpInfo(void)
     return true;
 }
 
-void SLSystemTableDumpConfigTables(SLSystemTable *table)
-{
-    UIntN count = table->numberOfConfigTables;
 
-    if (!count)
-    {
-        XKLog(kXKLogLevelVerbose, "Warning: No UEFI Config Tables Found!\n");
-        return;
-    }
-
-    XKLog(kXKLogLevelVerbose, "Dumping %d UEFI Configuration Tables:\n", count);
-    XKLog(kXKLogLevelVerbose, "First table is at %p\n", table->configTables);
-
-    for (OSIndex i = 0; i < count; i++)
-    {
-        SLConfigTable *configTable = &table->configTables[i];
-        OSUTF8Char *id = XKUIDToString(&configTable->id);
-
-        XKPrintString("Config Table %d: {\n", i);
-        XKLog(kXKLogLevelVerbose, "    ID: %s\n", id);
-        XKLog(kXKLogLevelVerbose, "    Address: %p\n", configTable->pointer);
-        XKLog(kXKLogLevelVerbose, "} ");
-
-        SLFree(id);
-    }
-
-    XKPrintString("\n\n");
-}
 
 void SLDumpConsoles(void)
 {

@@ -60,6 +60,11 @@ OSAddress SLMemoryAllocatorInit(void)
     return heap;
 }
 
+void SLMemoryAllocatorOnTerminateBoot(void)
+{
+    gSLCurrentHeap.shouldFree = false;
+}
+
 #pragma mark - Heap Functions
 
 void SLMemoryAllocatorSetHeap(OSAddress newHeap, OSSize newSize)
