@@ -36,9 +36,12 @@ typedef struct {
     SLConfigTable       *configTables;
 } SLSystemTable;
 
-#if kCXBootloaderCode
+#if kCXBootloaderCode || kCXKernelCode
+    // Note: This is implemented in SLRuntimeServices.c
     OSPrivate SLSystemTable *SLSystemTableGetCurrent(void);
-#endif /* kCXBootloaderCode */
+
+    OSPrivate OSAddress SLSystemTableLocateConfigTable(SLProtocol tableID);
+#endif /* kCXBootloaderCode || kCXKernelCode */
 
 #endif /* !kCXAssemblyCode */
 

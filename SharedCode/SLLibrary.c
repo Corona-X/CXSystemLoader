@@ -1,4 +1,5 @@
 #include <SystemLoader/SLLibrary.h>
+#include <SystemLoader/SLMemoryAllocator.h>
 
 OSAddress SLGetMainImageHandle(void)
 {
@@ -22,15 +23,21 @@ bool SLDelayProcessor(UInt64 time)
 #if kCXBuildDev
     void SLUnrecoverableError(void)
     {
-        if (gSLBootConsoleIsInitialized)
-            SLPrintString("Unrecoverable Error!\n");
+        if (gSLConsoleIsInitialized)
+        {
+            SLPrintString("Unrecoverable Error!\n\n");
+
+            SLPrintString("Memory Allocator State:|n");
+            SLMemoryAllocatorDumpHeapInfo();
+            SLMemoryAllocatorDumpMainPool();
+        }
 
         SLLeave(kSLStatusLoadError);
     }
 #else /* !kCXBuildDev */
     void SLUnrecoverableError(void)
     {
-        if (gSLBootConsoleIsInitialized)
+        if (gSLConsoleIsInitialized)
             SLPrintString("Unrecoverable Error!\n");
 
         SLLeave(kSLStatusLoadError);

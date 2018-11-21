@@ -54,8 +54,6 @@ typedef struct {
 } SLConsoleControl;
 
 #if kCXBootloaderCode
-    OSPrivate void SLBootConsoleInitialize(void);
-
     OSPrivate SLConsoleInput *SLBootConsoleGetInput(void);
     OSPrivate bool SLBootConsoleResetInput(void);
     OSPrivate UInt16 SLBootConsoleReadKey(bool shouldBlock);
@@ -65,8 +63,6 @@ typedef struct {
     OSPrivate bool SLBootConsoleResetOutput(void);
     OSPrivate bool SLBootConsoleOutput(OSUTF16Char *string);
     OSPrivate bool SLBootConsoleClearScreen(void);
-
-    OSExport bool gSLBootConsoleIsInitialized;
 #endif /* kCXBootloaderCode */
 
 #endif /* !kCXAssemblyCode */

@@ -16,7 +16,6 @@ SLMachOFile *SLMachOFileOpenMapped(OSAddress base, OSSize size)
     file->stringsOffset = 0;
     file->stringsSize = 0;
 
-
     file->stackAddress = kOSNullPointer;
     file->stackSize = 0;
 
@@ -304,7 +303,7 @@ SLMachOFile *SLMachOFileOpenMapped(OSAddress base, OSSize size)
             }
         } else {
             // Allocate space for segments and go back
-            file->loadAddress = SLBootServicesAllocateAnyPages(file->loadedSize >> kSLBootPageShift);
+            file->loadAddress = SLAllocateAnyPages(file->loadedSize >> kSLBootPageShift);
 
             if (!file->loadAddress)
             {
@@ -318,7 +317,7 @@ SLMachOFile *SLMachOFileOpenMapped(OSAddress base, OSSize size)
     }
 
     file->stackSize = kSLMachODefaultStackSize;
-    file->stackAddress = SLBootServicesAllocateAnyPages(file->stackSize >> kSLBootPageShift);
+    file->stackAddress = SLAllocateAnyPages(file->stackSize >> kSLBootPageShift);
 
     if (!file->stackAddress)
     {
@@ -373,7 +372,10 @@ OSInteger SLMachOSetSymbolValues(SLMachOFile *file, const OSUTF8Char *const *sym
                 if (!XKStringCompare8(symbols[i], strings + symbol->nameOffset))
                 {
                     if (kCXBuildDev)
-                        SLPrintString("Replacing symbol %s at %p\n", strings + symbol->nameOffset, symbol->value);
+                    {
+                        SLPrintString("Replacing symbol %s at %p ", strings + symbol->nameOffset, symbol->value);
+                        SLPrintString("(%p, %p)\n", file->loadAddress + symbol->value, values[i]);
+                    }
 
                     OSAddress destination = symbol->value + file->loadAddress;
                     XKMemoryCopy(values[i], destination, symbolSizes[i]);
@@ -390,6 +392,43 @@ OSInteger SLMachOSetSymbolValues(SLMachOFile *file, const OSUTF8Char *const *sym
     return replaced;
 }
 
+bool SLMachOCallVoidFunction(SLMachOFile *file, const OSUTF8Char *name)
+{
+    if (!file->symbolTableOffset || !file->symbolCount)
+        return 0;
+
+    if (!file->stringsOffset || !file->stringsSize)
+        return 0;
+
+    OSMOSymbolEntry *symbol = (OSMOSymbolEntry *)(file->base + file->symbolTableOffset);
+    const OSUTF8Char *strings = file->base + file->stringsOffset;
+    OSMOSymbolEntry *symbolTableEnd = symbol + file->symbolCount;
+
+    while (symbol < symbolTableEnd)
+    {
+        if (!(symbol->type & kOSMOSymbolFlagSymbolicDebug))
+        {
+           if (symbol->nameOffset > file->stringsSize)
+            break;
+
+            if (!XKStringCompare8(name, strings + symbol->nameOffset))
+            {
+                if (kCXBuildDev)
+                    SLPrintString("Calling function '%s' at %p\n", strings + symbol->nameOffset, symbol->value);
+
+                OSAddress entry = symbol->value + file->loadAddress;
+                ((void (*)())entry)();
+
+                return true;
+            }
+        }
+
+        symbol++;
+    }
+
+    return false;
+}
+
 // I cheat here. I don't actually load the full thread state...
 // I just jump to the entry point specified (offset by the right amount)
 // Usually everything but the instruction pointer is null, however,
@@ -397,18 +436,20 @@ OSInteger SLMachOSetSymbolValues(SLMachOFile *file, const OSUTF8Char *const *sym
 OSNoReturn void SLMachOExecute(SLMachOFile *file)
 {
     OSAddress entryPoint = file->entryPoint->rip + file->loadAddress;
+    OSAddress stack = file->stackAddress;
 
     if (kCXBuildDev)
     {
         SLPrintString("Calling entry point at %p...\n", entryPoint);
-        SLPrintString("Note: WILL switch stack to %p\n", file->stackAddress);
+        SLPrintString("Note: WILL switch stack to %p\n", stack);
     }
 
     asm __volatile__ ("movq %0, %%rsp ;"
                       "movq %0, %%rbp ;"
                       "jmp *%1" : :
-                      "r" (file->stackAddress),
-                      "r" (entryPoint)
+                      "r" (stack),
+                      "r" (entryPoint),
+                      "D" (file)
                       );
 
     SLPrintString("Error: ????");

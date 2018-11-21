@@ -128,6 +128,8 @@ typedef struct {
     OSPrivate SLMemoryMap *SLBootServicesTerminate(void);
     OSPrivate OSAddress *SLBootServicesLocateHandles(SLProtocol protocol, OSCount *count);
     OSPrivate OSAddress SLBootServicesLocateProtocol(SLProtocol protocol);
+
+    OSPrivate OSNoReturn void SLBootServicesExit(SLStatus status);
 #endif /* kCXBootloaderCode */
 
 #endif /* !kCXAssemblyCode */

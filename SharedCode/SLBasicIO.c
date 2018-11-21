@@ -1,33 +1,11 @@
-#include <SystemLoader/EFI/SLBootConsole.h>
 #include <SystemLoader/SLBasicIO.h>
 #include <System/OSByteMacros.h>
 
 OSPrivate static void SLPrintNumber(UInt64 *n, bool isSigned, UInt8 base, UInt8 padding);
+OSPrivate void SLConsoleInitialize(void);
 
-// This is really 2 pages (UTF-16)
-OSUTF16Char gSLPrintBuffer[kSLBootPageSize];
-OSIndex gSLPrintBufferIndex = 0;
-
-// Just Print to UEFI
-// This uses a buffer which is flushed on newlines
-void SLPrintCharacter(const OSUTF8Char character)
-{
-    gSLPrintBuffer[gSLPrintBufferIndex++] = character;
-
-    if (character == '\n')
-        SLPrintCharacter('\r');
-
-    if (gSLPrintBufferIndex >= (kSLBootPageSize - 1) || character == '\n')
-        SLPrintBufferFlush();
-}
-
-void SLPrintBufferFlush(void)
-{
-    gSLPrintBuffer[gSLPrintBufferIndex] = 0;
-    gSLPrintBufferIndex = 0;
-
-    SLBootConsoleOutput(gSLPrintBuffer);
-}
+// We print to this function, which is defined differently depending on how we're currently outputting text.
+OSPrivate void SLPrintCharacter(const OSUTF8Char character);
 
 static void SLPrintNumber(UInt64 *n, bool isSigned, UInt8 base, UInt8 padding)
 {
@@ -96,10 +74,8 @@ static void SLPrintNumber(UInt64 *n, bool isSigned, UInt8 base, UInt8 padding)
 // It's the bootloader, who cares.
 void SLPrintString(const OSUTF8Char *format, ...)
 {
-    #if !kCXBuildDev
-        if (OSUnlikely(!gSLBootConsoleIsInitialized))
-            SLBootConsoleInitialize();
-    #endif /* kCXBuildDev */
+    if (OSUnlikely(!gSLConsoleIsInitialized))
+        return;
 
     bool justEnteredEscapeCode = false;
     bool specialPadding = false;
@@ -219,7 +195,15 @@ void SLPrintString(const OSUTF8Char *format, ...)
                 }
             } break;
             case 'S': {
-                // Ehh this probably doesn't have to be implemented...
+                // Just print every other, ignoring edge cases for now...
+                const OSUTF16Char *string = OSVAGetNext(args, OSUTF16Char *);
+                inEscapeCode = false;
+
+                while (*string)
+                {
+                    SLPrintCharacter((OSUTF8Char)*string);
+                    string++;
+                }
             } break;
             // Extension to print a hex string
             // from a given address
@@ -316,6 +300,7 @@ void SLPrintString(const OSUTF8Char *format, ...)
             SLPrintNumber((UInt64 *)&number, printSign, base, padding);
             #undef entry
 
+            specialPadding = false;
             inEscapeCode = false;
             printNumber = false;
             printSign = false;

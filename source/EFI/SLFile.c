@@ -15,7 +15,7 @@ SLFile *SLGetRootDirectoryForImage(OSAddress imageHandle)
 
 #pragma mark - Open/Close Functions
 
-SLFile *SLOpenChild(SLFile *parent, const OSUTF8Char *child, UInt8 mode)
+SLFile *SLOpenChild(SLFile *parent, const OSUTF16Char *child, UInt8 mode)
 {
     SLBootServicesCheck(kOSNullPointer);
     SLFile *file;
@@ -26,26 +26,17 @@ SLFile *SLOpenChild(SLFile *parent, const OSUTF8Char *child, UInt8 mode)
     return file;
 }
 
-SLFile *SLOpenPath(const OSUTF8Char *path, UInt8 mode)
+SLFile *SLOpenPath(const OSUTF16Char *path, UInt8 mode)
 {
     if (kCXBuildDev) SLBootServicesCheck(kOSNullPointer);
 
-    OSUTF16Char *efiPath = SLPathToEFIPath(path);
-    if (!efiPath) return kOSNullPointer;
-
     SLFile *root = SLGetRootDirectoryForImage(SLGetMainImageHandle());
-    if (!root) goto fail;
+    if (!root) return kOSNullPointer;
 
-    SLFile *child = SLOpenChild(root, efiPath, mode);
-    if (!child) goto fail;
+    SLFile *child = SLOpenChild(root, path, mode);
+    if (!child) return kOSNullPointer;
 
-    SLFree(efiPath);
     return child;
-
-fail:
-
-    SLFree(efiPath);
-    return kOSNullPointer;
 }
 
 bool SLFileClose(SLFile *file)
@@ -69,7 +60,7 @@ bool SLFileRead(SLFile *file, OSAddress buffer, OSSize size)
     return !SLStatusIsError(status);
 }
 
-bool SLPathRead(const OSUTF8Char *path, OSOffset offset, OSAddress buffer, OSSize size)
+bool SLPathRead(const OSUTF16Char *path, OSOffset offset, OSAddress buffer, OSSize size)
 {
     if (kCXBuildDev) SLBootServicesCheck(false);
 
@@ -95,50 +86,6 @@ OSOffset SLFileReadAt(SLFile *file, OSOffset offset, OSAddress buffer, OSSize si
     }
 
     if (!SLFileRead(file, buffer, size))
-        return -1;
-
-    return initialOffset;
-}
-
-#pragma mark - Write Functions
-
-bool SLFileWrite(SLFile *file, OSAddress buffer, OSSize size)
-{
-    SLBootServicesCheck(false);
-    OSSize writtenSize = size;
-
-    SLStatus status = file->write(file, &writtenSize, buffer);
-    if (writtenSize != size) return false;
-
-    return !SLStatusIsError(status);
-}
-
-bool SLPathWrite(const OSUTF8Char *path, OSAddress buffer, OSSize size)
-{
-    if (kCXBuildDev) SLBootServicesCheck(false);
-
-    SLFile *file = SLOpenPath(path, kSLFileModeWrite | kSLFileModeCreate);
-    if (!file) return false;
-
-    bool success = SLFileWrite(file, buffer, size);
-    return (SLFileClose(file) && success);
-}
-
-OSOffset SLFileWriteAt(SLFile *file, OSOffset offset, OSAddress buffer, OSSize size)
-{
-    SLBootServicesCheck(-1);
-    OSOffset initialOffset;
-
-    SLStatus status = file->getOffset(file, &initialOffset);
-    if (SLStatusIsError(status)) return -1;
-
-    if (initialOffset != offset)
-    {
-        status = file->setOffset(file, offset);
-        if (SLStatusIsError(status)) return -1;
-    }
-
-    if (!SLFileWrite(file, buffer, size))
         return -1;
 
     return initialOffset;
@@ -178,10 +125,22 @@ bool SLFileGetSize(SLFile *file, OSSize *size)
     if (status == kSLStatusBufferTooSmall) status = kSLStatusSuccess;
     if (SLStatusIsError(status)) return false;
 
-    return info.fileSize;
+    // UEFI is stupid and for some reason I can't just grab the pieces that I need
+    // We have to allocate an array of the size they want for some reason and do it again
+    // Otherwise it just refuses to give me anything, which is annoying...
+
+    SLFileInfo *realInfo = SLAllocate(infoSize);
+    if (!realInfo) return false;
+
+    status = file->getInfo(file, &fileInfo, &infoSize, realInfo);
+    if (SLStatusIsError(status)) return false;
+    (*size) = realInfo->fileSize;
+
+    SLFree(realInfo);
+    return true;
 }
 
-bool SLPathGetSize(const OSUTF8Char *path, OSSize *size)
+bool SLPathGetSize(const OSUTF16Char *path, OSSize *size)
 {
     if (kCXBuildDev) SLBootServicesCheck(false);
 
@@ -194,7 +153,7 @@ bool SLPathGetSize(const OSUTF8Char *path, OSSize *size)
 
 #pragma mark - Utility Functions
 
-OSAddress SLPathReadFully(const OSUTF8Char *path, OSSize *size)
+OSAddress SLPathReadFully(const OSUTF16Char *path, OSSize *size)
 {
     SLBootServicesCheck(kOSNullPointer);
 
@@ -240,17 +199,36 @@ fail:
     return kOSNullPointer;
 }
 
-bool SLFileSync(SLFile *file)
-{
-    SLBootServicesCheck(false);
-
-    SLStatus status = file->flush(file);
-    return !SLStatusIsError(status);
-}
-
 #pragma mark - Path Conversion
 
 OSUTF16Char *SLPathToEFIPath(const OSUTF8Char *path)
 {
-    return path;
+    OSUTF8Char *string = path;
+    OSLength length = 0;
+
+    while (*string++)
+        length++;
+
+    OSUTF16Char *result = SLAllocate((length + 1) * sizeof(OSUTF16Char));
+
+    if (!result)
+        return kOSNullPointer;
+
+    for(OSIndex i = 0; (OSLength)i < length; i++)
+    {
+        if (path[i] >= 0x80)
+        {
+            // This isn't supported here yet......
+            SLFree(result);
+
+            return kOSNullPointer;
+        }
+
+        if (path[i] == '/')
+            result[i] = '\\';
+        else
+            result[i] = path[i];
+    }
+
+    return result;
 }

@@ -33,7 +33,7 @@ typedef struct {
     SLABI SLStatus (*close)(OSAddress this);
     OSAddress delete;
     SLABI SLStatus (*read)(OSAddress this, OSSize *size, OSAddress buffer);
-    SLABI SLStatus (*write)(OSAddress this, OSSize *size, OSAddress buffer);
+    OSAddress write;
     SLABI SLStatus (*getOffset)(OSAddress this, OSOffset *offset);
     SLABI SLStatus (*setOffset)(OSAddress this, OSOffset offset);
     SLABI SLStatus (*getInfo)(OSAddress this, OSUIDIntelData *type, OSSize *size, OSAddress address);
@@ -49,24 +49,20 @@ typedef struct {
 #if kCXBootloaderCode
     OSPrivate SLFile *SLGetRootDirectoryForImage(OSAddress imageHandle);
 
-    OSPrivate SLFile *SLOpenChild(SLFile *parent, const OSUTF8Char *child, UInt8 mode);
-    OSPrivate SLFile *SLOpenPath(const OSUTF8Char *path, UInt8 mode);
+    OSPrivate SLFile *SLOpenChild(SLFile *parent, const OSUTF16Char *child, UInt8 mode);
+    OSPrivate SLFile *SLOpenPath(const OSUTF16Char *path, UInt8 mode);
     OSPrivate bool SLFileClose(SLFile *file);
 
     OSPrivate bool SLFileRead(SLFile *file, OSAddress buffer, OSSize size);
-    OSPrivate bool SLPathRead(const OSUTF8Char *path, OSOffset offset, OSAddress buffer, OSSize size);
+    OSPrivate bool SLPathRead(const OSUTF16Char *path, OSOffset offset, OSAddress buffer, OSSize size);
     OSPrivate OSOffset SLFileReadAt(SLFile *file, OSOffset offset, OSAddress buffer, OSSize size);
-
-    OSPrivate bool SLFileWrite(SLFile *file, OSAddress buffer, OSSize size);
-    OSPrivate bool SLPathWrite(const OSUTF8Char *path, OSAddress buffer, OSSize size);
-    OSPrivate OSOffset SLFileWriteAt(SLFile *file, OSOffset offset, OSAddress buffer, OSSize size);
 
     OSPrivate bool SLFileSetOffset(SLFile *file, OSOffset offset);
     OSPrivate OSOffset SLFileGetOffset(SLFile *file);
     OSPrivate bool SLFileGetSize(SLFile *file, OSSize *size);
-    OSPrivate bool SLPathGetSize(const OSUTF8Char *path, OSSize *size);
+    OSPrivate bool SLPathGetSize(const OSUTF16Char *path, OSSize *size);
 
-    OSPrivate OSAddress SLPathReadFully(const OSUTF8Char *path, OSSize *size);
+    OSPrivate OSAddress SLPathReadFully(const OSUTF16Char *path, OSSize *size);
     OSPrivate OSAddress SLFileReadFully(SLFile *file, OSSize *size);
     OSPrivate bool SLFileSync(SLFile *file);
 

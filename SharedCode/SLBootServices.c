@@ -91,11 +91,11 @@ SLMemoryMap *SLBootServicesGetMemoryMap(void)
     // Try 3 times for some reason?
     for (OSCount i = 0; i < 3; i++)
     {
-        memoryMap->entryCount = (memoryMapSize / sizeof(SLMemoryDescriptor));
+        memoryMap->entryCount = (memoryMapSize / entrySize);
         memoryMap->entries = SLAllocate(memoryMapSize);
         if (!memoryMap->entries) goto fail;
 
-        memoryMapSize = SLGetObjectSize(memoryMap->entries);
+        //memoryMapSize = SLGetObjectSize(memoryMap->entries);
         status = SLBootServicesGetCurrent()->getMemoryMap(&memoryMapSize, memoryMap->entries, &memoryMap->key, &entrySize, &version);
 
         if (status == kSLStatusBufferTooSmall)
@@ -177,4 +177,12 @@ OSAddress SLBootServicesLocateProtocol(SLProtocol protocol)
     if (SLStatusIsError(status)) return kOSNullPointer;
 
     return result;
+}
+
+OSNoReturn void SLBootServicesExit(SLStatus status)
+{
+    SLBootServicesGetCurrent()->exit(SLGetMainImageHandle(), status, 0, kOSNullPointer);
+
+    // If we're still here, there was an error somewhere...
+    SLRuntimeServicesResetSystem(kSLResetTypeShutdown, status, kOSNullPointer);
 }

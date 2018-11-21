@@ -1,6 +1,5 @@
 #include <SystemLoader/EFI/SLBootServices.h>
 #include <SystemLoader/SLMemoryAllocator.h>
-#include <SystemLoader/SLBasicDebug.h>
 #include <SystemLoader/SLBasicIO.h>
 #include <SystemLoader/SLLibrary.h>
 #include <System/OSByteMacros.h>
@@ -12,25 +11,24 @@ OSPrivate OSAddress SLExpandHeap(OSCount moreBytes);
 OSPrivate OSAddress SLAllocateInPool(SLMemoryPool *pool, OSSize size);
 OSPrivate void SLFreeInPool(SLMemoryPool *pool, OSAddress object, OSSize objectSize);
 
-SLMemoryPool gSLMainPoolInfo = {
+// These 2 symbols will be overrides in CXKernelLoader
+__attribute__((section("__DATA,__data"))) SLMemoryPool gSLMainPoolInfo = {
     .address = kOSNullPointer,
     .size = 0,
     .usedSize = 0,
-    .head = kOSNullPointer
+    .head = kOSNullPointer,
+
+    .allocCount = 0,
+    .freeCount = 0
 };
 
-SLHeap gSLCurrentHeap = {
+__attribute__((section("__DATA,__data"))) SLHeap gSLCurrentHeap = {
     .baseAddress = kOSNullPointer,
     .currentSize = 0,
     .maxSize = 0,
     .initialized = false,
     .shouldFree = false,
 };
-
-#if kCXBuildDev
-    OSCount gSLMemoryAllocationCount = 0;
-    OSCount gSLMemoryFreeCount = 0;
-#endif /* kCXBuildDev */
 
 #pragma mark - Allocator Functions
 
@@ -46,18 +44,19 @@ OSAddress SLMemoryAllocatorInit(void)
         SLMemoryAllocatorSetHeap(newHeap, newHeapSize << kSLBootPageShift);
         gSLCurrentHeap.shouldFree = true;
     } else {
-        #if kCXBuildDev
+        if (kCXBuildDev) {
             SLPrintString("Error: Heap buffer allocation failed! (%s in %s)\n", __func__, __FILE__);
             SLPrintString("This Error is unrecoverable.\n");
-        #else
+        } else {
             SLPrintString("Error: Heap allocation failed! [%d]\n", __LINE__);
-        #endif /* kCXBuildDev */
+        }
 
         SLUnrecoverableError();
     }
 
     OSAddress heap = SLMemoryAllocatorGetHeapAddress();
     if (heap) gSLCurrentHeap.initialized = true;
+
     return heap;
 }
 
@@ -284,9 +283,8 @@ OSAddress SLAllocate(OSSize size)
     (*((OSSize *)result)) = allocSize;
     result += sizeof(OSSize);
 
-    #if kCXBuildDev
-        gSLMemoryAllocationCount++;
-    #endif
+    if (kCXBuildDev)
+        gSLMainPoolInfo.allocCount++;
 
     return result;
 }
@@ -297,9 +295,8 @@ OSAddress SLReallocate(OSAddress object, OSSize newSize)
     {
         SLPrintString("SLReallocate() on object not inside pool!\n");
 
-        #if kCXBuildDev
+        if (kCXBuildDev)
             SLPrintString("Object: %p, Requested Size: %zu\n", object, newSize);
-        #endif /* kCXBuildDev */
 
         return kOSNullPointer;
     }
@@ -339,7 +336,57 @@ void SLFree(OSAddress object)
 
     SLFreeInPool(&gSLMainPoolInfo, sizePointer, size);
 
-    #if kCXBuildDev
-        gSLMemoryFreeCount++;
-    #endif
+    if (kCXBuildDev)
+        gSLMainPoolInfo.freeCount++;
 }
+
+#pragma mark - Debug Functions
+
+#if kCXBuildDev
+
+OSCount SLMemoryAllocatorGetPoolAllocCount(void)
+{
+    return gSLMainPoolInfo.allocCount;
+}
+
+OSCount SLMemoryAllocatorGetPoolFreeCount(void)
+{
+    return gSLMainPoolInfo.freeCount;
+}
+
+void SLMemoryAllocatorDumpHeapInfo(void)
+{
+    SLPrintString("Heap Info:\n");
+    SLPrintString("Base Address: %p\n", gSLCurrentHeap.baseAddress);
+    SLPrintString("Size: %u/%u ",       gSLCurrentHeap.currentSize, gSLCurrentHeap.maxSize);
+    SLPrintString("(0x%zX/0x%zX)\n",    gSLCurrentHeap.currentSize, gSLCurrentHeap.maxSize);
+    SLPrintString("Will Free:    %s\n", (gSLCurrentHeap.shouldFree ? "yes" : "no"));
+}
+
+void SLMemoryAllocatorDumpMainPool(void)
+{
+    SLPrintString("Pool Info:\n");
+    SLPrintString("Base Address: %p\n", gSLMainPoolInfo.address);
+    SLPrintString("Size: %u/%u ",       gSLMainPoolInfo.usedSize, gSLMainPoolInfo.size);
+    SLPrintString("Allocations: %u\n",  gSLMainPoolInfo.allocCount);
+    SLPrintString("Frees: %u\n",        gSLMainPoolInfo.freeCount);
+    SLPrintString("(0x%zX/0x%zX)\n",    gSLMainPoolInfo.usedSize, gSLMainPoolInfo.size);
+    SLPrintString("Node List:\n");
+
+    SLMemoryNode *node = gSLMainPoolInfo.head;
+    OSCount spaces = 0;
+
+    while (node)
+    {
+        SLPrintString("");
+
+        for (OSCount i = 0; i < spaces; i++)
+            SLPrintString(" ");
+
+        SLPrintString("--> %p (0x%zX bytes) --> %p\n", node, node->size, node->next);
+        node = node->next;
+        spaces += 2;
+    }
+}
+
+#endif /* kCXBuildDev */

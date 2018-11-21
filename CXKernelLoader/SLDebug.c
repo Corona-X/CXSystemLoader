@@ -1,8 +1,6 @@
 #include <SystemLoader/EFI/SLBootServices.h>
 #include <SystemLoader/EFI/SLGraphics.h>
-#include <SystemLoader/SLConfigFile.h>
-#include <SystemLoader/SLDebug.h>
-#include <Kernel/XKShared.h>
+#include <SystemLoader/Kernel/SLDebug.h>
 
 #if 0
 

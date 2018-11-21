@@ -26,6 +26,13 @@ typedef struct {
     OSSize size;
     OSSize usedSize;
     SLMemoryNode *head;
+
+    // We keep these in during any build,
+    // but they're only used in dev/debug builds.
+    // In release, we need to keep a comsistent strcture size,
+    // as this structure is used across binaries.
+    OSCount allocCount;
+    OSCount freeCount;
 } SLMemoryPool;
 
 typedef struct {
@@ -50,13 +57,17 @@ typedef struct {
     OSPrivate OSAddress SLReallocate(OSAddress object, OSSize newSize);
     OSPrivate void SLFree(OSAddress object);
 
+    #if kCXBuildDev
+        OSPrivate OSCount SLMemoryAllocatorGetPoolAllocCount(void);
+        OSPrivate OSCount SLMemoryAllocatorGetPoolFreeCount(void);
+
+        OSPrivate void SLMemoryAllocatorDumpMainPool(void);
+        OSPrivate void SLMemoryAllocatorDumpHeapInfo(void);
+    #endif /* kCXBuildDev */
+
+    // These should be copied to CXKernelLoader
     OSExport SLMemoryPool gSLMainPoolInfo;
     OSExport SLHeap gSLCurrentHeap;
-
-    #if kCXBuildDev
-        OSExport OSCount gSLMemoryAllocationCount;
-        OSExport OSCount gSLMemoryFreeCount;
-    #endif /* kCXBuildDev */
 #endif /* kCXBootloaderCode */
 
 #endif /* !kCXAssemblyCode */

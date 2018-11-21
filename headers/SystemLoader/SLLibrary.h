@@ -26,14 +26,15 @@
 
 OSPrivate SLABI OSNoReturn void SLLeave(SLStatus status);
 OSPrivate OSNoReturn void SLUnrecoverableError(void);
-OSPrivate OSAddress SLGetMainImageHandle(void);
 OSPrivate bool SLDelayProcessor(UInt64 time);
+OSPrivate OSAddress SLGetMainImageHandle(void);
 
 OSExport OSAddress gSLFirmwareReturnAddress;
-OSExport SLSystemTable *gSLLoaderSystemTable;
+OSExport OSSize gSLLoaderImageSize;
+
+// These are passed on to CXKernelLoader
 OSExport OSAddress gSLLoaderImageHandle;
 OSExport bool gSLBootServicesEnabled;
-OSExport OSSize gSLLoaderImageSize;
 
 #endif /* kCXAssemblyCode && kCXBootloaderCode */
 

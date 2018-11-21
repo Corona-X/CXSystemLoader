@@ -4,8 +4,8 @@
 /* beeselmane - 9.8.2016   -  3:15 PM EST                          */
 /**=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=**/
 
-#ifndef __SYSTEMLOADER_SLSYSTEMLOADER__
-#define __SYSTEMLOADER_SLSYSTEMLOADER__ 1
+#ifndef __SYSTEMLOADER_LOADER_SLSYSTEMLOADER__
+#define __SYSTEMLOADER_LOADER_SLSYSTEMLOADER__ 1
 
 #include <Corona-X.h>
 #include <SystemLoader/SLBase.h>
@@ -20,4 +20,4 @@ OSPrivate OSNoReturn void SLLoadSystemOrLeave(SLBlockIO *blockDevice);
 
 #endif /* kCXAssemblyCode && kCXBootloaderCode */
 
-#endif /* !defined(__SYSTEMLOADER_SLSYSTEMLOADER__) */
+#endif /* !defined(__SYSTEMLOADER_LOADER_SLSYSTEMLOADER__) */

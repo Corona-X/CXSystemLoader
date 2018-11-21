@@ -1,13 +1,14 @@
+#include <SystemLoader/Loader/SLSystemLoader.h>
 #include <SystemLoader/SLMemoryAllocator.h>
-#include <SystemLoader/SLSystemLoader.h>
+#include <SystemLoader/Loader/SLConfig.h>
+#include <SystemLoader/Loader/SLLoader.h>
 #include <SystemLoader/SLBasicIO.h>
 #include <SystemLoader/SLLibrary.h>
-#include <SystemLoader/SLLoader.h>
 #include <SystemLoader/SLMach-O.h>
 #include <System/OSByteMacros.h>
 #include <Kernel/C/XKMemory.h>
 
-#define kSLSymbolCount      4
+#define kSLSymbolCount      6
 #define kSLBlockSize        512
 
 typedef struct {
@@ -139,7 +140,11 @@ CAHeaderBootX *SLLoadBootX(SLFileLocator file, SLBlockIO *device)
 
     if (!buffer)
     {
-        SLPrintString("Could not allocate %zu pages for BootX!\n", pageCount);
+        if (kCXBuildDev)
+            SLPrintString("Error: Could not allocate %zu pages for BootX!\n", pageCount);
+        else
+            SLPrintString("Error: Could not allocate memory!\n");
+
         return kOSNullPointer;
     }
 
@@ -157,8 +162,11 @@ CAHeaderBootX *SLLoadBootX(SLFileLocator file, SLBlockIO *device)
 }
 
 // TODO: Actually validate the archive
-bool SLValidateBootX(CAHeaderBootX *header, OSUnused OSSize size)
+bool SLValidateBootX(CAHeaderBootX *header, OSSize size)
 {
+    if (size <= sizeof(CAHeaderBootX))
+        return false;
+
     if (XKMemoryCompare(header->magic, kCAHeaderMagic, 4))
         return false;
 
@@ -205,34 +213,70 @@ OSNoReturn void SLRunKernelLoader(OSAddress base, SLFileLocator locator)
     // this is workaround...
     const OSUTF8Char *s0 = "_gSLLoaderSystemTable";
     const OSUTF8Char *s1 = "_gSLLoaderImageHandle";
-    const OSUTF8Char *s2 = "_gSLBootServicesEnabled";
+    const OSUTF8Char *s2 = "_gXKBootConfig";
     const OSUTF8Char *s3 = "_gSLBootXAddress";
+    const OSUTF8Char *s4 = "_gSLMainPoolInfo";
+    const OSUTF8Char *s5 = "_gSLCurrentHeap";
 
-    const OSUTF8Char *const symbols[kSLSymbolCount] = {s0, s1, s2, s3};
+    const OSUTF8Char *const symbols[kSLSymbolCount] = {s0, s1, s2, s3, s4, s5};
 
-    const OSAddress values[kSLSymbolCount] = {
+    OSAddress values[kSLSymbolCount] = {
         &gSLLoaderSystemTable,
         &gSLLoaderImageHandle,
-        &gSLBootServicesEnabled,
+        &gSLCurrentConfig,
         &base
     };
+
+    values[4] = SLAllocate(sizeof(SLMemoryPool));
+    values[5] = SLAllocate(sizeof(SLHeap));
+
+    if (!values[4] || !values[5])
+    {
+        SLPrintString("Error: Could not allocate memory.\n");
+        SLBootConsoleReadKey(true);
+
+        SLLeave(kSLStatusLoadError);
+    }
+
+    XKMemoryCopy(&gSLMainPoolInfo, values[4], sizeof(SLMemoryPool));
+    XKMemoryCopy(&gSLCurrentHeap, values[5], sizeof(SLHeap));
 
     const OSSize sizes[kSLSymbolCount] = {
         sizeof(OSAddress),
         sizeof(OSAddress),
         sizeof(OSAddress),
-        sizeof(OSAddress)
+        sizeof(OSAddress),
+        sizeof(SLMemoryPool),
+        sizeof(SLHeap)
     };
 
     OSCount replaced = SLMachOSetSymbolValues(loader, symbols, kSLSymbolCount, values, sizes);
 
     if (replaced != kSLSymbolCount)
     {
-        SLPrintString("Error: Could not pass parameters to Kernel Loader.\n");
+        SLPrintString("Error: Could not transfer state to Kernel Loader.\n");
         SLBootConsoleReadKey(true);
 
         SLLeave(kSLStatusLoadError);
     }
+
+    bool called = SLMachOCallVoidFunction(loader, "_SLConsoleInitialize");
+
+    if (!called)
+    {
+        SLPrintString("Error: Could not call into Kernel Loader.\n");
+        SLBootConsoleReadKey(true);
+
+        SLLeave(kSLStatusLoadError);
+    }
+
+    #if kCXBuildDev
+        OSCount allocs = SLMemoryAllocatorGetPoolAllocCount();
+        OSCount frees = SLMemoryAllocatorGetPoolFreeCount();
+
+        SLPrintString("Memory allocations: %u\n", allocs);
+        SLPrintString("Unfreed objects: %u\n", (allocs - frees));
+    #endif /* kCXBuildDev */
 
     SLMachOExecute(loader);
 }
@@ -297,6 +341,7 @@ void SLLoadSystemOrLeave(SLBlockIO *blockDevice)
         if (kCXBuildDev)
             SLPrintString("Kernel Loader %zu from start of BootX at %p\n", kernelLoader.offset, ((OSAddress)bootX) + kernelLoader.offset);
 
+        SLPrintString("Running Kernel Loader...\n");
         SLRunKernelLoader(bootX, kernelLoader);
     } else {
         SLPrintString("Could not locate BootX.\n");

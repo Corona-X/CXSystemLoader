@@ -2,62 +2,6 @@
 #include <SystemLoader/EFI/SLSystemTable.h>
 #include <SystemLoader/SLLibrary.h>
 
-bool gSLBootConsoleIsInitialized = false;
-
-void SLBootConsoleInitialize(void)
-{
-    SLBootServicesCheck();
-
-    if (gSLBootConsoleIsInitialized)
-        return;
-
-    SLConsoleControl *consoleControl = SLBootServicesLocateProtocol(kSLConsoleControlProtocol);
-
-    if (consoleControl)
-    {
-        SLStatus status = consoleControl->setMode(consoleControl, kSLConsoleScreenModeText);
-        if (SLStatusIsError(status)) SLUnrecoverableError();
-    }
-
-    if (!SLBootConsoleResetOutput()) SLUnrecoverableError();
-    if (!SLBootConsoleResetInput()) SLUnrecoverableError();
-    SLConsoleOutput *stream = SLBootConsoleGetOutput();
-
-    OSIndex maxMode = 0;
-    OSSize maxSize = 0;
-    SLStatus status;
-
-    for (OSIndex i = 0; ; i++)
-    {
-        UInt64 columns, rows;
-
-        status = stream->queryMode(stream, i, &columns, &rows);
-        if (SLStatusError(status)) break;
-
-        if ((columns * rows) > maxSize)
-        {
-            maxSize = columns * rows;
-            maxMode = i;
-        }
-    }
-
-    if (!maxSize) SLUnrecoverableError();
-
-    status = stream->setMode(stream, maxMode);
-    if (SLStatusIsError(status)) SLUnrecoverableError();
-
-    //status = stream->setAttributes(stream, 0x07);
-    //if (SLStatusIsError(status)) SLUnrecoverableError();
-
-    status = stream->enableCursor(stream, false);
-    if (SLStatusIsError(status)) SLUnrecoverableError();
-
-    //if (!SLBootConsoleClearScreen())
-    //    SLUnrecoverableError();
-
-    gSLBootConsoleIsInitialized = true;
-}
-
 #pragma mark - Input Console
 
 SLConsoleInput *SLBootConsoleGetInput(void)

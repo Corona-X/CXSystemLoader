@@ -1,11 +1,11 @@
-#include <Kernel/Shared/XKAssemblyCode.h>
+#include <Kernel/XKAssemblyCode.h>
 
 #if kCXArchIA
 
 .section kXKCodeSectionName
 .align kXKNaturalAlignment
 
-.extern SKSymbol(gSLBootConsoleIsInitialized)
+.extern SKSymbol(gSLConsoleIsInitialized)
 .extern SKSymbol(SLPrintBufferFlush)
 
 // Arguments:
@@ -37,21 +37,11 @@ XKDeclareFunction(_SLEntry):
     XKLoadSymbol(gSLLoaderSystemTable, %rbx)                // Load the pointer to the system table into the b register
     movq %rdx, (%rbx)                                       // Store the system table pointer passed as second argument (fastcall ABI, %rdx) into memory
 
-    #if kCXBuildDev && !kCXHostOSApple
-        leaq gSLLoaderBase(%rip), %rbx                      // If custom link, load the base address of the loader into the b register
-        leaq gSLLoaderEnd(%rip), %rax                       // If custom link, load the end address of the loader into the accumulator
-        subq %rbx, %rax                                     // Calculate the size of the loader in memory
-        XKLoadSymbol(gSLLoaderImageSize, %rbx)              // Load the pointer to the size of the loader into the b register
-        movq %rax, (%rbx)                                   // Store the size of the loader into memory
-    #endif /* kCXBuildDev */
-
     XKLoadSymbol(gSLBootServicesEnabled, %rbx)              // Load the BootServicesEnabled variable pointer into the b register
     movb $1, (%rbx)                                         // Mark boot services as being enabled
 
-    #if kCXBuildDev
-        leaq XKSymbol(SLBootConsoleInitialize)(%rip), %rax  // Load the address of the BootConsole initialize function into the accumulator
-        callq *%rax                                         // Initialize the BootConsole here if development or debug build
-    #endif /* kCXBuildDev */
+    leaq XKSymbol(SLConsoleInitialize)(%rip), %rax          // Load the address of the BootConsole initialize function into the accumulator
+    callq *%rax                                             // Initialize the BootConsole here
 
     leaq XKSymbol(SLMemoryAllocatorInit)(%rip), %rax        // Load the address of the memory allocator initialze function into the accumulator
     callq *%rax                                             // Call the address stored in the accumulator (depends on if a development build)
@@ -77,7 +67,7 @@ XKDeclareFunction(_SLEntry):
 // without returning. It can do pretty
 // much whatever it wants...
 XKDeclareFunction(SLLeave):
-    XKLoadSymbol(gSLBootConsoleIsInitialized, %rbx)         // Load Address of symbol which indiccates if BootConsole has been initialized
+    XKLoadSymbol(gSLConsoleIsInitialized, %rbx)             // Load Address of symbol which indiccates if BootConsole has been initialized
     movq (%rbx), %rax                                       // Load value into accumulator
     test %rax, %rax                                         // Test if boot console has been initialized
     jz 1f                                                   // If boot console wasn't initialized, just exit
@@ -105,23 +95,25 @@ XKDeclareFunction(SLLeave):
         pushq (%rax)                                        // Inject firmware return address
         ret                                                 // Return to given address
 
+// Arguments:
+//   %rcx: The number of pages to allocate
+//
+// Return Value:
+//   The value returned from SLBootServicesAllocateAnyPages
+//
+// Destroyed Registers:
+//
+// This function simply calls through to SLBootServicesAllocateAnyPages.
+// When kernel loader maps the kernel into memory, boot services are not guarenteed to be active.
+// As such, we need to give SLMach-O an implementation-agnostic function to allocate pages.
+XKDeclareFunction(SLAllocateAnyPages):
+    leaq XKSymbol(SLBootServicesAllocateAnyPages)(%rip), %rax   // Load the address of the boot services' alloc function
+    callq *%rax                                                 // Call through
+    ret                                                         // Immidietely return. Pass return value through.
+
 .comm XKSymbol(gSLFirmwareReturnAddress), 8, 8
 .comm XKSymbol(gSLLoaderSystemTable),     8, 8
 .comm XKSymbol(gSLLoaderImageHandle),     8, 8
 .comm XKSymbol(gSLBootServicesEnabled),   1, 1
-
-#if kCXBuildDev
-    .comm XKSymbol(gSLLoaderImageSize),   8, 8
-    .comm XKSymbol(gSLEnableScreenPrint), 1, 1
-#endif /* kCXBuildDev */
-
-#if kCXTargetOSLinux
-    .section .reloc, "a", @progbits
-
-    // Pretend like we're a relocatable executable...
-    .int 0
-    .int 10
-    .word 0
-#endif /* Target OS */
 
 #endif /* Arch */

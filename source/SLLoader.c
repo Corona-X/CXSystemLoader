@@ -2,7 +2,6 @@
 #include <Kernel/C/XKMemory.h>
 
 // TODO: SLRuntimeServices.h/c
-// TODO: SLConfigFile.c
 // TODO: Test on a real machine!
 
 static SLBlockIO *SLSelectSystemDevice(SLBlockIO **blockDevices, OSCount count)
@@ -33,6 +32,7 @@ static SLBlockIO *SLSelectSystemDevice(SLBlockIO **blockDevices, OSCount count)
         }
     }
 
+    bool autoboot = SLConfigGetBool(SLConfigGetCurrent(), kSLConfigKeyAutoboot, true);
     SLBlockIO *selected = kOSNullPointer;
     OSOffset selectedOffset = 0;
     OSIndex selectedIndex;
@@ -41,18 +41,37 @@ static SLBlockIO *SLSelectSystemDevice(SLBlockIO **blockDevices, OSCount count)
         SLPrintString("No systems found.\n");
         SLFree(hasSystem);
 
+        SLPrintString("Press any key to exit.\n");
+        SLBootConsoleReadKey(true);
+
         SLLeave(kSLStatusSuccess);
-    } else if (systemCount == 1) {
+    } else if (systemCount == 1 && autoboot) {
         // Wow this is easy...
         selectedIndex = 0;
+
+        SLPrintString("System 1 selected.\n");
+    } else if (systemCount == 1 && !autoboot) {
+        SLPrintString("System 1 selected. Press any key to confirm.\n");
+        SLBootConsoleReadKey(true);
+
+        selectedIndex = 0;
     } else {
+        SLPrintString("Selection: ");
+        SLPrintBufferFlush();
+
         bool success;
         selectedIndex = SLBootConsoleReadNumber(10, &success);
 
         if (!success)
         {
-            SLPrintString("Loading system #1...\n");
+            SLPrintString("Invalid Response. System #1 selected...\n");
             selected = 0;
+
+            if (!autoboot)
+            {
+                SLPrintString("Press any key to confirm.\n");
+                SLBootConsoleReadKey(true);
+            }
         }
     }
 
@@ -65,7 +84,9 @@ static SLBlockIO *SLSelectSystemDevice(SLBlockIO **blockDevices, OSCount count)
         }
     }
 
-    SLPrintString("Selected system on device %u\n", selectedOffset);
+    if (kCXBuildDev)
+        SLPrintString("Selected system is on device %u\n", selectedOffset);
+
     SLFree(hasSystem);
     return selected;
 }
@@ -76,6 +97,11 @@ SLStatus CXSystemLoaderMain(OSUnused OSAddress imageHandle, OSUnused SLSystemTab
 {
     // Hmm.... how to start....
     SLPrintString(kSLLoaderWelcomeString);
+    SLConfigGetCurrent(); // Load config
+
+    #if kCXBuildDev
+        SLConfigDump(SLConfigGetCurrent());
+    #endif /* kCXBuildDev */
 
     OSCount count;
     SLBlockIO **blockDevices = SLBlockIOGetAll(&count);

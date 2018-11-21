@@ -12,6 +12,13 @@
 
 #if !kCXAssemblyCode
 
+typedef OSEnum(UInt32, SLResetType) {
+    kSLResetTypeCold                = 0,
+    kSLResetTypeWarm                = 1,
+    kSLResetTypeShutdown            = 2,
+    kSLResetTypePlatformSpecific    = 3
+};
+
 typedef struct {
     SLTableHeader header;
     OSAddress getTime;
@@ -24,15 +31,15 @@ typedef struct {
     OSAddress getNextVariableName;
     OSAddress setVariable;
     OSAddress getCounterHigh;
-    OSAddress resetSystem;
+    SLABI OSNoReturn void (*resetSystem)(SLResetType type, SLStatus status, UIntN dataSize, OSAddress data);
     OSAddress updateCapsule;
     OSAddress queryCapsuleCapabilities;
-    OSAddress quearyVariableInfo;
+    OSAddress queryVariableInfo;
 } SLRuntimeServices;
 
-#if kCXBootloaderCode
-    OSPrivate SLRuntimeServices *SLRuntimeServicesGetCurrent(void);
-#endif /* kCXBootloaderCode */
+OSPrivate SLRuntimeServices *SLRuntimeServicesGetCurrent(void);
+
+OSPrivate OSNoReturn void SLRuntimeServicesResetSystem(SLResetType type, SLStatus status, const OSUTF8Char *reason);
 
 #endif /* !kCXAssemblyCode */
 

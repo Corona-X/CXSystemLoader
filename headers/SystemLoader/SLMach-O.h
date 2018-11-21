@@ -14,6 +14,8 @@
 // 8 MB stack by default
 #define kSLMachODefaultStackSize (1 << 23)
 
+#if !kCXAssemblyCode
+
 typedef struct {
     OSAddress base;
     OSSize size;
@@ -35,9 +37,17 @@ typedef struct {
     OSMOThreadStateNative *entryPoint;
 } SLMachOFile;
 
-OSPrivate SLMachOFile *SLMachOFileOpenMapped(OSAddress base, OSSize size);
-OSPrivate OSInteger SLMachOSetSymbolValues(SLMachOFile *file, const OSUTF8Char *const *symbols, OSCount count, const OSAddress *const *values, OSSize *symbolSizes);
-OSPrivate OSNoReturn void SLMachOExecute(SLMachOFile *file);
-OSPrivate void SLMachOFileClose(SLMachOFile *file);
+#if kCXBootloaderCode
+    OSPrivate SLMachOFile *SLMachOFileOpenMapped(OSAddress base, OSSize size);
+    OSPrivate OSInteger SLMachOSetSymbolValues(SLMachOFile *file, const OSUTF8Char *const *symbols, OSCount count, const OSAddress *const *values, OSSize *symbolSizes);
+    OSPrivate bool SLMachOCallVoidFunction(SLMachOFile *file, const OSUTF8Char *name);
+    OSPrivate OSNoReturn void SLMachOExecute(SLMachOFile *file);
+    OSPrivate void SLMachOFileClose(SLMachOFile *file);
+
+    // Note: This function is used to map a file into memory properly. It should be defined in another object file linked with SLMach-O.c
+    OSPrivate OSAddress SLAllocateAnyPages(OSCount pages);
+#endif /* kCXBootloaderCode */
+
+#endif /* !kCXAssemblyCode */
 
 #endif /* !defined(__SYSTEMLOADER_SLMACHO__) */

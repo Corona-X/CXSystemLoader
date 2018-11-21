@@ -1,11 +1,13 @@
-// These symbol stubs are copied over from CXSystemLoader before this binary is executed.
+// These symbol stubs are copied over directly from CXSystemLoader before this binary is executed.
+#include <SystemLoader/SLMemoryAllocator.h>
+#include <Kernel/Shared/XKBootConfig.h>
 #include <SystemLoader/SLLibrary.h>
 
 // Symbols to hijack beforehand
-__attribute__((section("__DATA,__data"))) SLSystemTable *gSLLoaderSystemTable;
+__attribute__((section("__DATA,__data"))) OSAddress gSLLoaderSystemTable;
 __attribute__((section("__DATA,__data"))) OSAddress gSLLoaderImageHandle;
-__attribute__((section("__DATA,__data"))) bool gSLBootServicesEnabled;
+__attribute__((section("__DATA,__data"))) XKBootConfig *gXKBootConfig;
 __attribute__((section("__DATA,__data"))) OSAddress gSLBootXAddress;
 
-// This symbol is always true in this binary regardless of its true-ness
-//bool gSLBootConsoleIsInitialized = true;
+// Boot Services MUST be enabled when this binary is called.
+bool gSLBootServicesEnabled = true;
