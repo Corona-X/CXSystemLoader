@@ -5,6 +5,7 @@
 #include <SystemLoader/SLMach-O.h>
 #include <SystemLoader/SLBase.h>
 
+#include <Kernel/Shared/XKProcessorState.h>
 #include <Kernel/Shared/XKLegacy.h>
 #include <Kernel/C/XKUnicode.h>
 #include <Kernel/C/XKMemory.h>
@@ -311,11 +312,32 @@ void CXKernelLoaderMain(OSUnused SLMachOFile *loadedImage)
     // Yay make the screen pretty :)
     SLSetupVideo();
 
-    SLMemoryMap *map = SLBootServicesTerminate();
+    XKProcessorDescriptor gdtr, idtr;
+
+    XKProcessorGetGDTR(&gdtr);
+    XKProcessorGetIDTR(&idtr);
+
+    SLPrintString("GDT: %p\n", gdtr.base);
+    SLPrintString("Length: 0x%04X\n", gdtr.limit);
+
+    SLPrintString("IDT: %p\n", idtr.base);
+    SLPrintString("Length: 0x%04X\n", idtr.limit);
+
+    XKProcessorBasicState basicState;
+    XKProcessorGetBasicState(&basicState);
+
+    XKProcessorControlState controlState;
+    XKProcessorGetControlState(&controlState);
+
+    XKProcessorSegmentState segmentState;
+    XKProcessorGetSegmentState(&segmentState);
+
+    OSFault();
+/*    SLMemoryMap *map = SLBootServicesTerminate();
     SLMemoryZoneRead(map);
 
     SLSerialConsoleReadKey(true);
-    SLLeave(kSLStatusSuccess);
+    SLLeave(kSLStatusSuccess);*/
 }
 
 OSNoReturn void SLLeave(SLStatus status)
@@ -325,3 +347,8 @@ OSNoReturn void SLLeave(SLStatus status)
     else
         SLRuntimeServicesResetSystem(kSLResetTypeShutdown, status, kOSNullPointer);
 }
+
+OSShared void XKProcessorGetBasicState(XKProcessorBasicState *state);
+OSShared void XKProcessorGetSegmentState(XKProcessorSegmentState *state);
+OSShared void XKProcessorGetControlState(XKProcessorControlState *state);
+OSShared void XKProcessorGetDebugState(XKProcessorDebugState *state);
