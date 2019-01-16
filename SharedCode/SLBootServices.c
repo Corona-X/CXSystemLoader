@@ -28,6 +28,17 @@ bool SLBootServicesAllocatePages(OSAddress base, OSCount pages)
     return base;
 }
 
+OSAddress SLBootServicesAllocateLowPages(OSCount pages)
+{
+    SLBootServicesCheck(kOSNullPointer);
+    OSAddress result = 0xFFFF;
+
+    SLStatus status = SLBootServicesGetCurrent()->allocatePages(kSLAllocTypeMaxAddress, kSLMemoryTypeLoaderData, pages, &result);
+    if (SLStatusError(status)) return kOSNullPointer;
+
+    return result;
+}
+
 OSAddress SLBootServicesAllocateAnyPages(OSCount pages)
 {
     SLBootServicesCheck(kOSNullPointer);

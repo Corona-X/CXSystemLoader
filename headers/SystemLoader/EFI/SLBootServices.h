@@ -119,6 +119,7 @@ typedef struct {
     OSPrivate bool SLBootServicesHaveTerminated(void);
 
     OSPrivate bool SLBootServicesAllocatePages(OSAddress base, OSCount pages);
+    OSPrivate OSAddress SLBootServicesAllocateLowPages(OSCount pages); // Low means below 64K here
     OSPrivate OSAddress SLBootServicesAllocateAnyPages(OSCount pages);
     OSPrivate bool SLBootServicesFreePages(OSAddress base, OSCount pages);
     OSPrivate OSAddress SLBootServicesAllocate(OSSize size);

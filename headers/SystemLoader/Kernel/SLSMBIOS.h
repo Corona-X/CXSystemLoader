@@ -8,8 +8,10 @@
 #define __SYSTEMLOADER_KERNEL_SLSMBIOS__ 1
 
 #include <Corona-X.h>
-#include <System/OSTypes.h>
+#include <SystemLoader/SLBase.h>
 #include <System/OSCompilerMacros.h>
+
+#if !kCXAssemblyCode && kCXBootloaderCode
 
 typedef struct {
     //
@@ -17,5 +19,7 @@ typedef struct {
 
 OSPrivate bool SMTableParse(SMEntryPoint *entry);
 OSPrivate SMEntryPoint *SMTableGetMain(void);
+
+#endif /* !kCXAssemblyCode && kCXBootloaderCode */
 
 #endif /* !defined(__SYSTEMLOADER_KERNEL_SLDEBUG__) */

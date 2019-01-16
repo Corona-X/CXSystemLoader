@@ -37,9 +37,13 @@ typedef struct {
     OSAddress queryVariableInfo;
 } SLRuntimeServices;
 
+#if kCXBootloaderCode || kCXKernelCode
+
 OSPrivate SLRuntimeServices *SLRuntimeServicesGetCurrent(void);
 
 OSPrivate OSNoReturn void SLRuntimeServicesResetSystem(SLResetType type, SLStatus status, const OSUTF8Char *reason);
+
+#endif /* kCXBootloaderCode || kCXKernelCode */
 
 #endif /* !kCXAssemblyCode */
 

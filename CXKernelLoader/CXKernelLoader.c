@@ -1,23 +1,25 @@
 #include <SystemLoader/Kernel/SLKernelLoader.h>
+#include <SystemLoader/Kernel/SLEarlyMemoryInit.h>
+#include <SystemLoader/Kernel/SLProcessorCheck.h>
 #include <SystemLoader/Kernel/SLSerialConsole.h>
 #include <SystemLoader/SLMemoryAllocator.h>
+#include <SystemLoader/Kernel/SLVideo.h>
 #include <SystemLoader/SLLibrary.h>
 #include <SystemLoader/SLMach-O.h>
 #include <SystemLoader/SLBase.h>
 
 #include <Kernel/Shared/XKProcessorState.h>
+#include <Kernel/Shared/XKProcessorOP.h>
 #include <Kernel/Shared/XKLegacy.h>
 #include <Kernel/C/XKUnicode.h>
 #include <Kernel/C/XKMemory.h>
 
-#define kCXLowMemoryString "Corona System " kCXSystemName " " kCXSystemRevision "." kCXSystemMajorVersion ""
-
 // Kill boot services
+// Determine Memory Size
+// Map Memory in CR3
 // Setup IDT
 // Read SMBIOS
 // Setup ACPI
-// Determine Memory Size
-// Map Memory in CR3
 // Map runtime services high
 // Update runtime services map
 // Setup IOAPIC/Multithreading
@@ -28,268 +30,26 @@
 // Start other CPUs
 // Trampoline through Kernel into SystemServer
 
-OSPrivate void SLSetupMem0(void);
-
-typedef struct {
-    struct __SLMemoryZone {
-        OSAddress physical;
-        OSAddress virtual;
-        OSAddress end;
-
-        OSSize length;
-
-        bool isAvailable;
-        bool isCorrupt;
-    } *zones;
-
-    SLMemoryMap *bootloaderMap;
-    OSCount zoneCount;
-
-    OSSize availableSize;
-    OSSize corruptSize;
-
-    OSSize fullSize;
-} SLMemoryZoneInfo;
-
-typedef struct __SLMemoryZone SLMemoryZone;
-
-OSPrivate SLMemoryZoneInfo *SLReadMemoryMap(SLMemoryMap *map);
-OSPrivate SLMemoryZoneInfo *SLMemoryZoneRead(SLMemoryMap *map);
-
-OSPrivate void SLDumpMemoryInfo(SLMemoryZoneInfo *info);
-OSPrivate void SLDumpMemoryMap(SLMemoryMap *map);
-
-SLMemoryZoneInfo *SLReadMemoryMap(SLMemoryMap *map)
-{
-    SLMemoryZoneInfo *info = SLAllocate(sizeof(SLMemoryZoneInfo));
-
-    if (!info)
-    {
-        SLPrintString("Allocator Error.\n");
-        return kOSNullPointer;
-    }
-
-    info->zones = SLAllocate(map->entryCount * sizeof(SLMemoryZone));
-    info->bootloaderMap = map;
-
-    if (!info->zones || !info)
-    {
-        SLPrintString("Allocator Error.\n");
-        SLFree(info);
-
-        return kOSNullPointer;
-    }
-
-    XKMemoryZero(info->zones, map->entryCount * sizeof(SLMemoryZone));
-
-    for (OSIndex i = 0; ((OSCount)i) < map->entryCount; i++)
-    {
-        SLMemoryDescriptor *descriptor = &map->entries[i];
-
-        OSSize length = descriptor->pageCount << kSLBootPageShift;
-        OSIndex zoneIndex;
-
-        bool isAvailable;
-        bool isCorrupt;
-
-        if (!descriptor->pageCount)
-        {
-            SLPrintString("Warning: Empty descriptor (%u)\n", i);
-            continue;
-        }
-
-        if (descriptor->entryType == kSLMemoryTypeUnusable)
-            isCorrupt = true;
-        else
-            isCorrupt = false;
-
-        switch (descriptor->entryType)
-        {
-            case kSLMemoryTypeReserved:
-                SLPrintString("Warning: Reserved memory type (%u, %u pages)\n", i, descriptor->pageCount);
-
-                isAvailable = false;
-            break;
-            case kSLMemoryTypeLoaderCode:
-            case kSLMemoryTypeLoaderData:
-            case kSLMemoryTypeBootCode:
-            case kSLMemoryTypeBootData:
-                isAvailable = true;
-            break;
-            case kSLMemoryTypeRuntimeCode:
-            case kSLMemoryTypeRuntimeData:
-                isAvailable = false;
-            break;
-            case kSLMemoryTypeFree:
-            case kSLMemoryTypeACPIReclaim:
-            case kSLMemoryTypeUnusable:
-                isAvailable = true;
-            break;
-            case kSLMemoryTypeACPINVS:
-            case kSLMemoryTypeMappedIO:
-            case kSLMemoryTypeMappedIOPorts:
-            case kSLMemoryTypePALCode:
-            case kSLMemorytypePersistent:
-                isAvailable = false;
-            break;
-            default:
-                SLPrintString("Warning: Invalid memory type (%u)\n", i);
-                continue;
-        }
-
-        for (zoneIndex = 0; ; zoneIndex++)
-        {
-            SLMemoryZone *zone = &info->zones[zoneIndex];
-            if (!zone->length) break;
-
-            if (zone->isAvailable != isAvailable || zone->isCorrupt != isCorrupt)
-                continue;
-
-            if (zone->end == descriptor->physicalAddress)
-            {
-                zone->length += length;
-                zone->end = zone->physical + zone->length;
-
-                break;
-            }
-        }
-
-        if (!info->zones[zoneIndex].length)
-        {
-            SLMemoryZone *zone = &info->zones[zoneIndex];
-            zone->physical = descriptor->physicalAddress;
-            zone->virtual = descriptor->virtualAddress;
-            zone->length = length;
-            zone->end = zone->physical + zone->length;
-
-            zone->isAvailable = isAvailable;
-            zone->isCorrupt = isCorrupt;
-
-            info->zoneCount++;
-        }
-
-        if (isCorrupt)
-            info->corruptSize += length;
-
-        if (isAvailable)
-            info->availableSize += length;
-
-        info->fullSize += length;
-    }
-
-    OSAddress top = info->zones[info->zoneCount - 1].end;
-
-    if (info->fullSize < (OSPointerValue)top)
-        SLPrintString("Warning: Memory map has holes!\n");
-
-    return info;
-}
-
-SLMemoryZoneInfo *SLMemoryZoneRead(SLMemoryMap *map)
-{
-    if (!map)
-    {
-        SLPrintString("No map\n");
-        return kOSNullPointer;
-    }
-
-    SLMemoryZoneInfo *info = SLReadMemoryMap(map);
-
-    if (!info)
-    {
-        SLPrintString("Couldn't read map.\n");
-
-        SLFree(map->entries);
-        SLFree(map);
-
-        return kOSNullPointer;
-    }
-
-    SLPrintString("Memory zone count: %zu\n", info->zoneCount);
-    SLPrintString("Detected memory size: %zu\n", info->fullSize);
-    SLPrintString("Available size: %zu\n", info->availableSize);
-    SLPrintString("Corrupted size: %zu\n", info->corruptSize);
-
-    SLDumpMemoryInfo(info);
-
-    return info;
-}
-
-void SLDumpMemoryInfo(SLMemoryZoneInfo *info)
-{
-    if (!info)
-    {
-        SLPrintString("No info.\n");
-        return;
-    }
-
-    for (OSIndex i = 0; ((OSCount)i) < info->zoneCount; i++)
-    {
-        OSAddress start = info->zones[i].physical;
-        OSAddress end = info->zones[i].end;
-
-        SLPrintString("%02u: 0x%08X --> 0x%08X (%s%s)\n", i, start, end,
-            (info->zones[i].isAvailable ? "available" : ""),
-            (info->zones[i].isCorrupt ? "corrupt" : "")
-        );
-    }
-}
-
-void SLDumpMemoryMap(SLMemoryMap *map)
-{
-    if (!map)
-    {
-        SLPrintString("No map.\n");
-        return;
-    }
-
-    for (OSIndex i = 0; ((OSCount)i) < map->entryCount; i++)
-    {
-        OSAddress start = map->entries[i].physicalAddress;
-        OSAddress end = start + (map->entries[i].pageCount << kSLBootPageShift);
-        OSAddress virtual = map->entries[i].virtualAddress;
-
-        UInt64 attributes = map->entries[i].attributes;
-        const char *type;
-
-        switch (map->entries[i].entryType)
-        {
-            case kSLMemoryTypeReserved:      type = "Reserved"; break;
-            case kSLMemoryTypeLoaderCode:    type = "Loader Code"; break;
-            case kSLMemoryTypeLoaderData:    type = "Loader Data"; break;
-            case kSLMemoryTypeBootCode:      type = "Boot Code"; break;
-            case kSLMemoryTypeBootData:      type = "Boot Data"; break;
-            case kSLMemoryTypeRuntimeCode:   type = "Runtime Code"; break;
-            case kSLMemoryTypeRuntimeData:   type = "Runtime Data"; break;
-            case kSLMemoryTypeFree:          type = "Free"; break;
-            case kSLMemoryTypeUnusable:      type = "Unusable"; break;
-            case kSLMemoryTypeACPIReclaim:   type = "ACPI Reclaimable"; break;
-            case kSLMemoryTypeACPINVS:       type = "ACPI NVS"; break;
-            case kSLMemoryTypeMappedIO:      type = "Memory Mapped I/O"; break;
-            case kSLMemoryTypeMappedIOPorts: type = "Memory Papped I/O Ports"; break;
-            case kSLMemoryTypePALCode:       type = "PAL Code"; break;
-            case kSLMemorytypePersistent:    type = "Persistent"; break;
-            default: type = "<Error>"; break;
-        }
-
-        SLPrintString("%02u: 0x%08X --> 0x%08X [%p] (0x%02X, %s)\n", i, start, end, virtual, attributes, type);
-    }
-}
-
-OSPrivate void SLSetupVideo(void);
+OSPrivate bool SLSetupMem0(void);
 
 // This function sets up the first KiB in memory.
 // We copy '0xC1' to NULL, stamp our OS version right after,
 // and then fill the rest of the page with zeros.
-void SLSetupMem0(void)
+bool SLSetupMem0(void)
 {
+    bool allocated = SLBootServicesAllocatePages(kOSNullPointer, 1);
     UInt8 mem0[0x400];
+
+    if (!allocated)
+        return false;
 
     XKMemorySetValue(mem0, 0x400, 0);
     mem0[0] = 0xC1;
 
     XKMemoryCopy(kCXLowMemoryString, &mem0[1], __builtin_strlen(kCXLowMemoryString));
     XKMemoryCopy(mem0, kOSNullPointer, 0x400);
+
+    return true;
 }
 
 void CXKernelLoaderMain(OSUnused SLMachOFile *loadedImage)
@@ -304,7 +64,8 @@ void CXKernelLoaderMain(OSUnused SLMachOFile *loadedImage)
     }
 
     // Set First KiB of RAM to System Info (Below legacy BIOS data area)
-    SLSetupMem0();
+    if (!SLSetupMem0() && kCXBuildDev)
+        SLPrintString("Warning: Null page allocated by firmware!\n");
 
     if (kCXBuildDev)
         SLPrintString("System info in first KiB: %s\n", (OSUTF8Char *)1);
@@ -312,10 +73,10 @@ void CXKernelLoaderMain(OSUnused SLMachOFile *loadedImage)
     // Yay make the screen pretty :)
     SLSetupVideo();
 
-    XKProcessorDescriptor gdtr, idtr;
+    XKSegmentDescriptor gdtr, idtr;
 
-    XKProcessorGetGDTR(&gdtr);
-    XKProcessorGetIDTR(&idtr);
+    sgdt(&gdtr);
+    sidt(&idtr);
 
     SLPrintString("GDT: %p\n", gdtr.base);
     SLPrintString("Length: 0x%04X\n", gdtr.limit);
@@ -332,12 +93,35 @@ void CXKernelLoaderMain(OSUnused SLMachOFile *loadedImage)
     XKProcessorSegmentState segmentState;
     XKProcessorGetSegmentState(&segmentState);
 
-    OSFault();
-/*    SLMemoryMap *map = SLBootServicesTerminate();
-    SLMemoryZoneRead(map);
+    SLPrintString("CR0: %p\n", controlState.cr0);
+    SLPrintString("CR3: %p\n", controlState.cr3);
+
+    SLPrintString("RBP: %p\n", basicState.rbp);
+    SLPrintString("RSP: %p\n", basicState.rsp);
+    SLPrintString("RIP: %p\n", basicState.rip);
+
+    SLPrintString("CS: 0x%04X\n", segmentState.cs);
+    SLPrintString("GS: 0x%04X\n", segmentState.gs);
+
+    SLMemoryMap *map = SLBootServicesTerminate();
+    SLMemoryZoneInfo *zoneInfo = SLMemoryZoneRead(map);
+
+    // Put as much RAM in as you want, we're only gonna map so much of it...
+    if (zoneInfo->availableSize > ((1L << 48) - (1 << 31)))
+        SLPrintString("Note: This system has a ton of memory.\n");
+
+    // Why is our memory not a multiple of the sallest page size on this architecture?
+    if (zoneInfo->availableSize % 0x1000)
+    {
+        // I'm not really sure what to do here...?
+    }
+
+    //
+
+    SLProcessorValidate();
 
     SLSerialConsoleReadKey(true);
-    SLLeave(kSLStatusSuccess);*/
+    SLLeave(kSLStatusSuccess);
 }
 
 OSNoReturn void SLLeave(SLStatus status)
@@ -348,7 +132,60 @@ OSNoReturn void SLLeave(SLStatus status)
         SLRuntimeServicesResetSystem(kSLResetTypeShutdown, status, kOSNullPointer);
 }
 
-OSShared void XKProcessorGetBasicState(XKProcessorBasicState *state);
-OSShared void XKProcessorGetSegmentState(XKProcessorSegmentState *state);
-OSShared void XKProcessorGetControlState(XKProcessorControlState *state);
-OSShared void XKProcessorGetDebugState(XKProcessorDebugState *state);
+/*
+
+ +------------------+-------+
+ |       ***        |   0   |
+ +------------------+-------+
+ |       ***        |   1   |
+ +------------------+-------+
+ |       ***        |   2   |
+ +------------------+-------+
+ |       ...        |  ...  |
+ +------------------+-------+
+ |  Server Code z2  | n - 4 |
+ +------------------+-------+
+ |  Server Code z1  | n - 3 |
+ +------------------+-------+
+ |    Kernel Code   | n - 2 |
+ +------------------+-------+
+ |  Firmware Space  | n - 1 |
+ +------------------+-------+
+
+ 'n' is what exactly? Well let me tell you...
+ 'n' is the number of this level of page directory.
+
+ Which level of page directory is this anyway?
+ Another good question... I'm not actually sure yet...
+
+ Also, while this binary is still running, we need to setup entry 0 of PML4
+ as a direct 1:1 map physical/virtual. When we jump to the kernel we can jump high.
+
+ Given we have 48 bits for virtual, maybe we take highest ~2GB for the last 4 chunks.
+ Then, MSB 11 (below 2^48 - 2^31 limit) gives firmware, 10 gives kernel, and 01/00 give
+ server banks 1 and 0.
+
+ Sooo, Servers are 0x7FFFFFFF80000000 --> 0x7FFFFFFFBFFFFFFF,
+       Kernel   is 0x7FFFFFFFC0000000 --> 0x7FFFFFFFDFFFFFFF,
+   and Firmware is 0x7FFFFFFFE0000000 --> 0x7FFFFFFFFFFFFFFF
+
+ Or, zero extending to 64 bits, 0xFFFF80000000 --> 0xFFFFFFFFFFFF are mapped virtually.
+
+ Note: Firmware is ACPI/UEFI/whatever else we have that won't be used excessively.
+       We can just sorta map addresses up to fit there, refill the boot service map,
+          and tell the firmware where we put it. Then we can make direct calls natively.
+ */
+
+/*
+
+Shared/
+XKProcessorOP.h --> Define CPU instructions as inlines/macros
+XKProcessorState.h --> Define CPU-related state structures
+XKProcessorInfo.h --> Define static CPU feature information structures
+
+
+ Note: For thread-specific information, we can use %gs to store a point to a CPU data struct in %gs. We can have both the volatile and non-volatile states from the state and info headers + current running program stuff in here.
+
+ */
+
+// Figure out how to do VM detection better???
