@@ -1,7 +1,7 @@
 #include <SystemLoader/Kernel/SLEarlyMemoryInit.h>
 #include <SystemLoader/SLMemoryAllocator.h>
 #include <SystemLoader/SLBasicIO.h>
-#include <Kernel/C/XKMemory.h>
+#include <Kernel/C/CLMemory.h>
 
 SLMemoryZoneInfo *SLReadMemoryMap(SLMemoryMap *map)
 {
@@ -24,7 +24,7 @@ SLMemoryZoneInfo *SLReadMemoryMap(SLMemoryMap *map)
         return kOSNullPointer;
     }
 
-    XKMemoryZero(info->zones, map->entryCount * sizeof(SLMemoryZone));
+    CLMemoryZero(info->zones, map->entryCount * sizeof(SLMemoryZone));
 
     for (OSIndex i = 0; ((OSCount)i) < map->entryCount; i++)
     {

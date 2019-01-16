@@ -11,6 +11,12 @@
 #include <SystemLoader/SLBase.h>
 
 #if !kCXAssemblyCode && kCXBootloaderCode
+    #if kCXBuildDev
+        #define SLDebugPrint(s, ...) SLPrintString(s, ##__VA_ARGS__)
+    #else /* Release */
+        #define SLDebugPrint(s, ...) do {} while (0)
+    #endif /* kCXBuildDev */
+
     OSPrivate void SLPrintStringFromList(const OSUTF8Char *format, OSVAList args);
     OSPrivate void SLPrintString(const OSUTF8Char *format, ...);
 

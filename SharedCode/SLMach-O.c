@@ -3,7 +3,7 @@
 #include <SystemLoader/SLLibrary.h>
 #include <SystemLoader/SLBasicIO.h>
 #include <SystemLoader/SLMach-O.h>
-#include <Kernel/C/XKMemory.h>
+#include <Kernel/C/CLMemory.h>
 
 SLMachOFile *SLMachOFileOpenMapped(OSAddress base, OSSize size)
 {
@@ -30,9 +30,7 @@ SLMachOFile *SLMachOFileOpenMapped(OSAddress base, OSSize size)
 
     if (file->header->magic != kOSMOMagic)
     {
-        if (kCXBuildDev)
-            SLPrintString("Mach-O Error: Invalid file magic.\n");
-
+        SLDebugPrint("Mach-O Error: Invalid file magic.\n");
         SLFree(file);
 
         return kOSNullPointer;
@@ -40,37 +38,33 @@ SLMachOFile *SLMachOFileOpenMapped(OSAddress base, OSSize size)
 
     if (file->header->machineType != kOSMOMachineTypeX86_64)
     {
-        if (kCXBuildDev)
-            SLPrintString("Mach-O Error: Invalid CPU type.\n");
-
+        SLDebugPrint("Mach-O Error: Invalid CPU type.\n");
         SLFree(file);
+
         return kOSNullPointer;
     }
 
     if (file->header->machineSubtype != kOSMOMachineSubtypeX86_64Any)
     {
-        if (kCXBuildDev)
-            SLPrintString("Mach-O Error: Invalid CPU subtype.\n");
-
+        SLDebugPrint("Mach-O Error: Invalid CPU subtype.\n");
         SLFree(file);
+
         return kOSNullPointer;
     }
 
     if (file->header->fileType != kOSMOFileTypeExecutable)
     {
-        if (kCXBuildDev)
-            SLPrintString("Mach-O Error: Invalid file type.\n");
-
+        SLDebugPrint("Mach-O Error: Invalid file type.\n");
         SLFree(file);
+
         return kOSNullPointer;
     }
 
     if (!(file->header->flags | kOSMOFlagPositionIndependant))
     {
-        if (kCXBuildDev)
-            SLPrintString("Mach-O Error: Invalid file flags.\n");
-
+        SLDebugPrint("Mach-O Error: Invalid file flags.\n");
         SLFree(file);
+
         return kOSNullPointer;
     }
 
@@ -87,10 +81,9 @@ SLMachOFile *SLMachOFileOpenMapped(OSAddress base, OSSize size)
             if (offset + sizeof(OSMOLoadCommand) > loadCommandSize)
             {
                 // Don't let it overflow
-                if (kCXBuildDev)
-                    SLPrintString("Mach-O Error: Invalid load commands.\n");
-
+                SLDebugPrint("Mach-O Error: Invalid load commands.\n");
                 SLFree(file);
+
                 return kOSNullPointer;
             }
 
@@ -99,20 +92,18 @@ SLMachOFile *SLMachOFileOpenMapped(OSAddress base, OSSize size)
             if ((OSSize)(offset + cmd->size) > loadCommandSize)
             {
                 // This overflows too
-                if (kCXBuildDev)
-                    SLPrintString("Mach-O Error: Invalid load command.\n");
-
+                SLDebugPrint("Mach-O Error: Invalid load command.\n");
                 SLFree(file);
+
                 return kOSNullPointer;
             }
 
             if (cmd->size < sizeof(OSMOLoadCommand))
             {
                 // This will corrupt or cause an infinite loop
-                if (kCXBuildDev)
-                    SLPrintString("Mach-O Error: Overlapping load commands.\n");
-
+                SLDebugPrint("Mach-O Error: Overlapping load commands.\n");
                 SLFree(file);
+
                 return kOSNullPointer;
             }
 
@@ -123,10 +114,9 @@ SLMachOFile *SLMachOFileOpenMapped(OSAddress base, OSSize size)
 
                     if (cmd->size < sizeof(OSMOSegmentCommand))
                     {
-                        if (kCXBuildDev)
-                            SLPrintString("Mach-O Error: Command too small for type.\n");
-
+                        SLDebugPrint("Mach-O Error: Command too small for type.\n");
                         SLFree(file);
+
                         return kOSNullPointer;
                     }
 
@@ -137,53 +127,48 @@ SLMachOFile *SLMachOFileOpenMapped(OSAddress base, OSSize size)
                         if (sectionSize < (command->sectionCount * sizeof(OSMOSectionCommand)))
                         {
                             // Command is too small
-                            if (kCXBuildDev)
-                                SLPrintString("Mach-O Error: Sections don't fit in segment command.\n");
-
+                            SLDebugPrint("Mach-O Error: Sections don't fit in segment command.\n");
                             SLFree(file);
+
                             return kOSNullPointer;
                         }
 
                         if (command->virtualAddress & kSLBootPageMask)
                         {
                             // Segments should be page aligned in memory
-                            if (kCXBuildDev)
-                                SLPrintString("Mach-O Error: Segment virtual address not memory aligned.\n");
-
+                            SLDebugPrint("Mach-O Error: Segment virtual address not memory aligned.\n");
                             SLFree(file);
+
                             return kOSNullPointer;
                         }
 
                         if (command->offset + command->size > file->size)
                         {
                             // Command will take more data than we have to load
-                            if (kCXBuildDev)
-                                SLPrintString("Mach-O Error: Segment extends over file end.\n");
-
+                            SLDebugPrint("Mach-O Error: Segment extends over file end.\n");
                             SLFree(file);
+
                             return kOSNullPointer;
                         }
 
                         file->loadedSize += command->virtualSize;
                     } else {
                         // Actually map the segment
-                        if (kCXBuildDev)
-                            SLPrintString("Mapping Segment %s (size %zu/%zu) %zu from %p\n", command->name, command->size, command->virtualSize, command->virtualAddress, file->loadAddress);
+                        SLDebugPrint("Mapping Segment %s (size %zu/%zu) %zu from %p\n", command->name, command->size, command->virtualSize, command->virtualAddress, file->loadAddress);
 
                         OSSize zeroSize = command->virtualSize - command->size;
 
-                        if (kCXBuildDev)
-                            SLPrintString("With %zu trailing empty bytes\n", zeroSize);
+                        SLDebugPrint("With %zu trailing empty bytes\n", zeroSize);
 
                         OSAddress destination = file->loadAddress + command->virtualAddress;
                         OSAddress source = file->base + command->offset;
 
-                        XKMemoryCopy(source, destination, command->size);
+                        CLMemoryCopy(source, destination, command->size);
 
                         if (zeroSize)
                         {
                             destination += command->size;
-                            XKMemorySetValue(destination, 0, zeroSize);
+                            CLMemorySetValue(destination, 0, zeroSize);
                         }
 
                         loadedSize += command->virtualSize;
@@ -194,10 +179,9 @@ SLMachOFile *SLMachOFileOpenMapped(OSAddress base, OSSize size)
 
                     if (cmd->size < sizeof(OSMOThreadCommand))
                     {
-                        if (kCXBuildDev)
-                            SLPrintString("Mach-O Error: Command too small for type.\n");
-
+                        SLDebugPrint("Mach-O Error: Command too small for type.\n");
                         SLFree(file);
+
                         return kOSNullPointer;
                     }
 
@@ -210,10 +194,9 @@ SLMachOFile *SLMachOFileOpenMapped(OSAddress base, OSSize size)
                     if (!stateSize || stateSize < sizeof(OSMOThreadStateNative))
                     {
                         // Thread state is too small
-                        if (kCXBuildDev)
-                            SLPrintString("Mach-O Error: Thread state not large enough.\n");
-
+                        SLDebugPrint("Mach-O Error: Thread state not large enough.\n");
                         SLFree(file);
+
                         return kOSNullPointer;
                     }
 
@@ -222,8 +205,7 @@ SLMachOFile *SLMachOFileOpenMapped(OSAddress base, OSSize size)
                         {
                             // Either there are two UnixThread commands or the memory changed...
                             // Just get out...
-                            if (kCXBuildDev)
-                                SLPrintString("Mach-O Error: Unixthread load error.\n");
+                            SLDebugPrint("Mach-O Error: Unixthread load error.\n");
 
                             if (file->loadAddress)
                                 SLBootServicesFreePages(file->loadAddress, file->loadedSize >> kSLBootPageShift);
@@ -240,10 +222,9 @@ SLMachOFile *SLMachOFileOpenMapped(OSAddress base, OSSize size)
 
                     if (cmd->size < sizeof(OSMOSymbolTableCommand))
                     {
-                        if (kCXBuildDev)
-                            SLPrintString("Mach-O Error: Command too small for type.\n");
-
+                        SLDebugPrint("Mach-O Error: Command too small for type.\n");
                         SLFree(file);
+
                         return kOSNullPointer;
                     }
 
@@ -266,8 +247,7 @@ SLMachOFile *SLMachOFileOpenMapped(OSAddress base, OSSize size)
                         {
                             // Either there are two symbol table commands or the memory changed...
                             // I don't like either of those cases, get out.
-                            if (kCXBuildDev)
-                                SLPrintString("Mach-O Error: Symbol/Strings table load error.\n");
+                            SLDebugPrint("Mach-O Error: Symbol/Strings table load error.\n");
 
                             if (file->loadAddress)
                                 SLBootServicesFreePages(file->loadAddress, file->loadedSize >> kSLBootPageShift);
@@ -293,8 +273,7 @@ SLMachOFile *SLMachOFileOpenMapped(OSAddress base, OSSize size)
             // Make sure we loaded everything we needed to
             if (loadedSize != file->loadedSize)
             {
-                if (kCXBuildDev)
-                    SLPrintString("Mach-O Error: Loaded segment size not equal to predicted.\n");
+                SLDebugPrint("Mach-O Error: Loaded segment size not equal to predicted.\n");
 
                 SLBootServicesFreePages(file->loadAddress, file->loadedSize >> kSLBootPageShift);
                 SLFree(file);
@@ -307,10 +286,9 @@ SLMachOFile *SLMachOFileOpenMapped(OSAddress base, OSSize size)
 
             if (!file->loadAddress)
             {
-                if (kCXBuildDev)
-                    SLPrintString("Mach-O Error: Couldn't allocate space for segments.\n");
-
+                SLDebugPrint("Mach-O Error: Couldn't allocate space for segments.\n");
                 SLFree(file);
+
                 return kOSNullPointer;
             }
         }
@@ -322,8 +300,7 @@ SLMachOFile *SLMachOFileOpenMapped(OSAddress base, OSSize size)
     if (!file->stackAddress)
     {
         // Dang, we almost made it...
-        if (kCXBuildDev)
-            SLPrintString("Mach-O Error: Couldn't allocate executable stack.\n");
+        SLDebugPrint("Mach-O Error: Couldn't allocate executable stack.\n");
 
         SLBootServicesFreePages(file->loadAddress, file->loadedSize >> kSLBootPageShift);
         SLFree(file);
@@ -369,16 +346,13 @@ OSInteger SLMachOSetSymbolValues(SLMachOFile *file, const OSUTF8Char *const *sym
                 if (symbol->nameOffset > file->stringsSize)
                     break;
 
-                if (!XKStringCompare8(symbols[i], strings + symbol->nameOffset))
+                if (!CLStringCompare8(symbols[i], strings + symbol->nameOffset))
                 {
-                    if (kCXBuildDev)
-                    {
-                        SLPrintString("Replacing symbol %s at %p ", strings + symbol->nameOffset, symbol->value);
-                        SLPrintString("(%p, %p)\n", file->loadAddress + symbol->value, values[i]);
-                    }
+                    SLDebugPrint("Replacing symbol %s at %p ", strings + symbol->nameOffset, symbol->value);
+                    SLDebugPrint("(%p, %p)\n", file->loadAddress + symbol->value, values[i]);
 
                     OSAddress destination = symbol->value + file->loadAddress;
-                    XKMemoryCopy(values[i], destination, symbolSizes[i]);
+                    CLMemoryCopy(values[i], destination, symbolSizes[i]);
 
                     replaced++;
                     break;
@@ -411,10 +385,9 @@ bool SLMachOCallVoidFunction(SLMachOFile *file, const OSUTF8Char *name)
            if (symbol->nameOffset > file->stringsSize)
             break;
 
-            if (!XKStringCompare8(name, strings + symbol->nameOffset))
+            if (!CLStringCompare8(name, strings + symbol->nameOffset))
             {
-                if (kCXBuildDev)
-                    SLPrintString("Calling function '%s' at %p\n", strings + symbol->nameOffset, symbol->value);
+                SLDebugPrint("Calling function '%s' at %p\n", strings + symbol->nameOffset, symbol->value);
 
                 OSAddress entry = symbol->value + file->loadAddress;
                 ((void (*)())entry)();
@@ -438,11 +411,8 @@ OSNoReturn void SLMachOExecute(SLMachOFile *file)
     OSAddress entryPoint = file->entryPoint->rip + file->loadAddress;
     OSAddress stack = file->stackAddress;
 
-    if (kCXBuildDev)
-    {
-        SLPrintString("Calling entry point at %p...\n", entryPoint);
-        SLPrintString("Note: WILL switch stack to %p\n", stack);
-    }
+    SLDebugPrint("Calling entry point at %p...\n", entryPoint);
+    SLDebugPrint("Note: WILL switch stack to %p\n", stack);
 
     asm __volatile__ ("movq %0, %%rsp ;"
                       "movq %0, %%rbp ;"

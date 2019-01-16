@@ -11,8 +11,8 @@
 #include <Kernel/Shared/XKProcessorState.h>
 #include <Kernel/Shared/XKProcessorOP.h>
 #include <Kernel/Shared/XKLegacy.h>
-#include <Kernel/C/XKUnicode.h>
-#include <Kernel/C/XKMemory.h>
+#include <Kernel/C/CLUnicode.h>
+#include <Kernel/C/CLMemory.h>
 
 // Kill boot services
 // Determine Memory Size
@@ -43,11 +43,11 @@ bool SLSetupMem0(void)
     if (!allocated)
         return false;
 
-    XKMemorySetValue(mem0, 0x400, 0);
+    CLMemorySetValue(mem0, 0x400, 0);
     mem0[0] = 0xC1;
 
-    XKMemoryCopy(kCXLowMemoryString, &mem0[1], __builtin_strlen(kCXLowMemoryString));
-    XKMemoryCopy(mem0, kOSNullPointer, 0x400);
+    CLMemoryCopy(kCXLowMemoryString, &mem0[1], __builtin_strlen(kCXLowMemoryString));
+    CLMemoryCopy(mem0, kOSNullPointer, 0x400);
 
     return true;
 }
@@ -73,35 +73,11 @@ void CXKernelLoaderMain(OSUnused SLMachOFile *loadedImage)
     // Yay make the screen pretty :)
     SLSetupVideo();
 
-    XKSegmentDescriptor gdtr, idtr;
-
-    sgdt(&gdtr);
-    sidt(&idtr);
-
-    SLPrintString("GDT: %p\n", gdtr.base);
-    SLPrintString("Length: 0x%04X\n", gdtr.limit);
-
-    SLPrintString("IDT: %p\n", idtr.base);
-    SLPrintString("Length: 0x%04X\n", idtr.limit);
-
-    XKProcessorBasicState basicState;
-    XKProcessorGetBasicState(&basicState);
-
-    XKProcessorControlState controlState;
-    XKProcessorGetControlState(&controlState);
-
-    XKProcessorSegmentState segmentState;
-    XKProcessorGetSegmentState(&segmentState);
-
-    SLPrintString("CR0: %p\n", controlState.cr0);
-    SLPrintString("CR3: %p\n", controlState.cr3);
-
-    SLPrintString("RBP: %p\n", basicState.rbp);
-    SLPrintString("RSP: %p\n", basicState.rsp);
-    SLPrintString("RIP: %p\n", basicState.rip);
-
-    SLPrintString("CS: 0x%04X\n", segmentState.cs);
-    SLPrintString("GS: 0x%04X\n", segmentState.gs);
+    if (!SLProcessorValidate())
+    {
+        SLPrintString("Incompatible CPU.\n");
+        SLLeave(kSLStatusLoadError);
+    }
 
     SLMemoryMap *map = SLBootServicesTerminate();
     SLMemoryZoneInfo *zoneInfo = SLMemoryZoneRead(map);
@@ -117,8 +93,6 @@ void CXKernelLoaderMain(OSUnused SLMachOFile *loadedImage)
     }
 
     //
-
-    SLProcessorValidate();
 
     SLSerialConsoleReadKey(true);
     SLLeave(kSLStatusSuccess);

@@ -13,7 +13,7 @@
 
 #define kSLLoaderWelcomeString      kCXSystemName " System Loader Version " kSLLoaderVersionString " [" kCXBuildTypeString " Build " kSLLoaderBuildString "]\n"
 #define kSLLoaderVersionString      kCXSystemRevision "." kCXSystemMajorVersion
-#define kSLLoaderBuildString        "0068"
+#define kSLLoaderBuildString        "0069"
 
 #define kSLLoaderBootArchivePath    "/boot/BootX.car"
 #define kSLLoaderBootDirectory      "/boot/"

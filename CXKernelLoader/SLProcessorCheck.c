@@ -8,6 +8,12 @@ bool SLProcessorValidate(void)
     // As such, and given that we're already running in long mode, it should be fair to simply
     // call cpuid directly. If some exception occurs, we certainly don't support the given CPU.
 
+    if (!SLProcessorSupportsCPUID())
+    {
+        SLDebugPrint("CPUID Unsupported");
+        return false;
+    }
+
     OSUTF8Char hypervisorName[12];
     OSUTF8Char cpuTypeName[12];
     OSUTF8Char cpuFullName[48];

@@ -2,7 +2,7 @@
 #include <SystemLoader/EFI/SLSystemTable.h>
 #include <SystemLoader/SLMemoryAllocator.h>
 #include <SystemLoader/SLLibrary.h>
-#include <Kernel/C/XKMemory.h>
+#include <Kernel/C/CLMemory.h>
 
 SLBootServices *SLBootServicesGetCurrent(void)
 {
@@ -86,7 +86,7 @@ SLMemoryMap *SLBootServicesGetMemoryMap(void)
     SLMemoryMap *memoryMap = SLAllocate(sizeof(SLMemoryMap));
     if (!memoryMap) return kOSNullPointer;
 
-    XKMemorySetValue(memoryMap, sizeof(SLMemoryMap), 0);
+    CLMemorySetValue(memoryMap, sizeof(SLMemoryMap), 0);
     OSSize memoryMapSize = 0;
     OSSize entrySize = 0;
     UInt32 version = 0;

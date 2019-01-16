@@ -1,5 +1,5 @@
 #include <SystemLoader/SystemLoader.h>
-#include <Kernel/C/XKMemory.h>
+#include <Kernel/C/CLMemory.h>
 
 // TODO: SLRuntimeServices.h/c
 // TODO: Test on a real machine!
@@ -84,8 +84,7 @@ static SLBlockIO *SLSelectSystemDevice(SLBlockIO **blockDevices, OSCount count)
         }
     }
 
-    if (kCXBuildDev)
-        SLPrintString("Selected system is on device %u\n", selectedOffset);
+    SLDebugPrint("Selected system is on device %u\n", selectedOffset);
 
     SLFree(hasSystem);
     return selected;
@@ -112,8 +111,7 @@ SLStatus CXSystemLoaderMain(OSUnused OSAddress imageHandle, OSUnused SLSystemTab
 
         return kSLStatusLoadError;
     } else {
-        if (kCXBuildDev)
-            SLPrintString("Found %u block devices.\n", count);
+        SLDebugPrint("Found %u block devices.\n", count);
 
         SLBlockIO *selected = SLSelectSystemDevice(blockDevices, count);
         SLFree(blockDevices);

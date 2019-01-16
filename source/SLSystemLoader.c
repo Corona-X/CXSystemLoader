@@ -6,7 +6,7 @@
 #include <SystemLoader/SLLibrary.h>
 #include <SystemLoader/SLMach-O.h>
 #include <System/OSByteMacros.h>
-#include <Kernel/C/XKMemory.h>
+#include <Kernel/C/CLMemory.h>
 
 #define kSLSymbolCount      6
 #define kSLBlockSize        512
@@ -36,14 +36,14 @@ UInt64 SLIsSystemPartition(SLBlockIO *blockDevice)
     if (!SLBlockIORead(blockDevice, 0, gSLInitialBlockBuffer, kSLBlockSize))
         return 0;
 
-    if (XKMemoryCompare(gSLInitialBlockBuffer, kCAHeaderMagic, 4))
+    if (CLMemoryCompare(gSLInitialBlockBuffer, kCAHeaderMagic, 4))
         return 0;
 
-    if (XKMemoryCompare(&gSLInitialBlockBuffer[4], kCAHeaderVersionSystem, 4))
+    if (CLMemoryCompare(&gSLInitialBlockBuffer[4], kCAHeaderVersionSystem, 4))
         return 0;
 
     UInt64 version;
-    XKMemoryCopy(&gSLInitialBlockBuffer[8], &version, sizeof(CASystemVersionInternal));
+    CLMemoryCopy(&gSLInitialBlockBuffer[8], &version, sizeof(CASystemVersionInternal));
 
     return version;
 }
@@ -167,10 +167,10 @@ bool SLValidateBootX(CAHeaderBootX *header, OSSize size)
     if (size <= sizeof(CAHeaderBootX))
         return false;
 
-    if (XKMemoryCompare(header->magic, kCAHeaderMagic, 4))
+    if (CLMemoryCompare(header->magic, kCAHeaderMagic, 4))
         return false;
 
-    if (XKMemoryCompare(header->version, kCAHeaderVersionBootX, 4))
+    if (CLMemoryCompare(header->version, kCAHeaderVersionBootX, 4))
         return false;
 
     return true;
@@ -238,8 +238,8 @@ OSNoReturn void SLRunKernelLoader(OSAddress base, SLFileLocator locator)
         SLLeave(kSLStatusLoadError);
     }
 
-    XKMemoryCopy(&gSLMainPoolInfo, values[4], sizeof(SLMemoryPool));
-    XKMemoryCopy(&gSLCurrentHeap, values[5], sizeof(SLHeap));
+    CLMemoryCopy(&gSLMainPoolInfo, values[4], sizeof(SLMemoryPool));
+    CLMemoryCopy(&gSLCurrentHeap, values[5], sizeof(SLHeap));
 
     const OSSize sizes[kSLSymbolCount] = {
         sizeof(OSAddress),
@@ -304,8 +304,7 @@ void SLLoadSystemOrLeave(SLBlockIO *blockDevice)
     SLFileLocator bootLocator = SLLocateBootX(header, blockDevice);
 
     if (bootLocator.present) {
-        if (kCXBuildDev)
-            SLPrintString("Found BootX at %s. Data Offset: %zu, Size: %zu\n", kSLLoaderBootArchivePath, bootLocator.offset, bootLocator.size);
+        SLDebugPrint("Found BootX at %s. Data Offset: %zu, Size: %zu\n", kSLLoaderBootArchivePath, bootLocator.offset, bootLocator.size);
 
         CAHeaderBootX *bootX = SLLoadBootX(bootLocator, blockDevice);
 
@@ -325,8 +324,7 @@ void SLLoadSystemOrLeave(SLBlockIO *blockDevice)
             SLLeave(kSLStatusLoadError);
         }
 
-        if (kCXBuildDev)
-            SLPrintString("Boot-X Archive successfully loaded at address %p\n", bootX);
+        SLDebugPrint("Boot-X Archive successfully loaded at address %p\n", bootX);
 
         SLFileLocator kernelLoader = SLLocateKernelLoader(bootX);
 
@@ -338,8 +336,7 @@ void SLLoadSystemOrLeave(SLBlockIO *blockDevice)
             SLLeave(kSLStatusLoadError);
         }
 
-        if (kCXBuildDev)
-            SLPrintString("Kernel Loader %zu from start of BootX at %p\n", kernelLoader.offset, ((OSAddress)bootX) + kernelLoader.offset);
+        SLDebugPrint("Kernel Loader %zu from start of BootX at %p\n", kernelLoader.offset, ((OSAddress)bootX) + kernelLoader.offset);
 
         SLPrintString("Running Kernel Loader...\n");
         SLRunKernelLoader(bootX, kernelLoader);

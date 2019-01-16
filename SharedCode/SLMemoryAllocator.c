@@ -3,7 +3,7 @@
 #include <SystemLoader/SLBasicIO.h>
 #include <SystemLoader/SLLibrary.h>
 #include <System/OSByteMacros.h>
-#include <Kernel/C/XKMemory.h>
+#include <Kernel/C/CLMemory.h>
 
 OSPrivate void SLExpandPool(SLMemoryPool *pool, OSCount moreBytes, OSAddress base);
 OSPrivate OSAddress SLExpandHeap(OSCount moreBytes);
@@ -299,9 +299,7 @@ OSAddress SLReallocate(OSAddress object, OSSize newSize)
     if (!SLDoesOwnMemory(object))
     {
         SLPrintString("SLReallocate() on object not inside pool!\n");
-
-        if (kCXBuildDev)
-            SLPrintString("Object: %p, Requested Size: %zu\n", object, newSize);
+        SLDebugPrint("Object: %p, Requested Size: %zu\n", object, newSize);
 
         return kOSNullPointer;
     }
@@ -312,7 +310,7 @@ OSAddress SLReallocate(OSAddress object, OSSize newSize)
     OSAddress newObject = SLAllocate(newSize);
     if (!newObject) return kOSNullPointer;
 
-    XKMemoryCopy(object, newObject, size - sizeof(OSSize));
+    CLMemoryCopy(object, newObject, size - sizeof(OSSize));
     SLFreeInPool(&gSLMainPoolInfo, sizePointer, size);
 
     return newObject;

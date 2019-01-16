@@ -1,6 +1,6 @@
 #include <SystemLoader/EFI/SLSystemTable.h>
 #include <SystemLoader/SLBasicIO.h>
-#include <Kernel/C/XKMemory.h>
+#include <Kernel/C/CLMemory.h>
 
 OSAddress SLSystemTableLocateConfigTable(SLProtocol tableID)
 {
@@ -10,7 +10,7 @@ OSAddress SLSystemTableLocateConfigTable(SLProtocol tableID)
     {
         SLConfigTable *table = &systemTable->configTables[i];
 
-        if (!XKMemoryCompare(&table->id, &tableID, sizeof(SLProtocol)))
+        if (!CLMemoryCompare(&table->id, &tableID, sizeof(SLProtocol)))
             return table->pointer;
     }
 

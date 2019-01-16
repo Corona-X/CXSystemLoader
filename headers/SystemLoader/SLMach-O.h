@@ -11,8 +11,8 @@
 #include <SystemLoader/SLBase.h>
 #include <System/Executables/OSMach-O.h>
 
-// 8 MB stack by default
-#define kSLMachODefaultStackSize (1 << 23)
+// 32 KB stack by default
+#define kSLMachODefaultStackSize (1 << 15)
 
 #if !kCXAssemblyCode
 

@@ -1,7 +1,7 @@
 #include <SystemLoader/Kernel/SLVideo.h>
 
 #include <Kernel/Shared/XKBootConfig.h>
-#include <Kernel/C/XKMemory.h>
+#include <Kernel/C/CLMemory.h>
 
 #include <SystemLoader/EFI/SLBootServices.h>
 #include <SystemLoader/SLMemoryAllocator.h>
@@ -119,7 +119,7 @@ void SLSetupVideo(void)
     SLGraphicsContext *context = SLGraphicsOutputGetContextWithMaxSize(screen, width, height);
     if (!context) goto end;
 
-    XKMemorySetValue(context->framebuffer, context->framebufferSize, 0xFF);
+    CLMemorySetValue(context->framebuffer, context->framebufferSize, 0xFF);
     SLDrawLogoInContext(context);
 
     SLFree(context);

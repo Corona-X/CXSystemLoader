@@ -5,7 +5,7 @@
 #include <SystemLoader/EFI/SLFile.h>
 #include <SystemLoader/SLBasicIO.h>
 
-#include <Kernel/C/XKMemory.h>
+#include <Kernel/C/CLMemory.h>
 
 XKBootConfig *gSLCurrentConfig = kOSNullPointer;
 
@@ -213,7 +213,7 @@ XKBootConfig *SLConfigLoad(OSUTF8Char *path)
             goto error;
         }
 
-        XKMemoryCopy(buffers[i] + sizeof(OSSize), gSLCurrentConfig->entries[i], size);
+        CLMemoryCopy(buffers[i] + sizeof(OSSize), gSLCurrentConfig->entries[i], size);
         SLFree(buffers[i]);
     }
 
@@ -235,8 +235,8 @@ XKBootConfig *SLConfigGetCurrent(void)
 bool SLConfigGetBool(XKBootConfig *config, const OSUTF8Char *key, bool defaultValue)
 {
     for (OSIndex i = 0; i < (OSIndex)(config->entryCount * 2); i += 2)
-        if (!XKStringCompare8(key, config->entries[i]))
-            return !XKStringCompare8((OSUTF8Char *)"yes", config->entries[i + 1]);
+        if (!CLStringCompare8(key, config->entries[i]))
+            return !CLStringCompare8((OSUTF8Char *)"yes", config->entries[i + 1]);
 
     return defaultValue;
 }
