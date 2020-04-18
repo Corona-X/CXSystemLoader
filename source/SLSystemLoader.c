@@ -8,7 +8,7 @@
 #include <System/OSByteMacros.h>
 #include <Kernel/C/CLMemory.h>
 
-#define kSLSymbolCount      6
+#define kSLSymbolCount      7
 #define kSLBlockSize        512
 
 typedef struct {
@@ -23,7 +23,7 @@ OSPrivate SLFileLocator SLLocateBootX(CAHeaderSystemImage *header, SLBlockIO *de
 OSPrivate CAHeaderBootX *SLLoadBootX(SLFileLocator file, SLBlockIO *device);
 OSPrivate bool SLValidateBootX(CAHeaderBootX *header, OSSize size);
 OSPrivate SLFileLocator SLLocateKernelLoader(CAHeaderBootX *header);
-OSPrivate OSNoReturn void SLRunKernelLoader(OSAddress base, SLFileLocator locator);
+OSPrivate OSNoReturn void SLRunKernelLoader(OSAddress base, OSSize size, SLFileLocator locator);
 
 OSPrivate UInt8 gSLInitialBlockBuffer[kSLBlockSize];
 
@@ -197,7 +197,7 @@ SLFileLocator SLLocateKernelLoader(CAHeaderBootX *header)
     return file;
 }
 
-OSNoReturn void SLRunKernelLoader(OSAddress base, SLFileLocator locator)
+OSNoReturn void SLRunKernelLoader(OSAddress base, OSSize size, SLFileLocator locator)
 {
     SLMachOFile *loader = SLMachOFileOpenMapped(base + locator.offset, locator.size);
 
@@ -215,22 +215,24 @@ OSNoReturn void SLRunKernelLoader(OSAddress base, SLFileLocator locator)
     const OSUTF8Char *s1 = "_gSLLoaderImageHandle";
     const OSUTF8Char *s2 = "_gXKBootConfig";
     const OSUTF8Char *s3 = "_gSLBootXAddress";
-    const OSUTF8Char *s4 = "_gSLMainPoolInfo";
-    const OSUTF8Char *s5 = "_gSLCurrentHeap";
+    const OSUTF8Char *s4 = "_gSLBootXSize";
+    const OSUTF8Char *s5 = "_gSLMainPoolInfo";
+    const OSUTF8Char *s6 = "_gSLCurrentHeap";
 
-    const OSUTF8Char *const symbols[kSLSymbolCount] = {s0, s1, s2, s3, s4, s5};
+    const OSUTF8Char *const symbols[kSLSymbolCount] = {s0, s1, s2, s3, s4, s5, s6};
 
     OSAddress values[kSLSymbolCount] = {
         &gSLLoaderSystemTable,
         &gSLLoaderImageHandle,
         &gSLCurrentConfig,
-        &base
+        &base,
+        &size
     };
 
-    values[4] = SLAllocate(sizeof(SLMemoryPool));
-    values[5] = SLAllocate(sizeof(SLHeap));
+    values[5] = SLAllocate(sizeof(SLMemoryPool));
+    values[6] = SLAllocate(sizeof(SLHeap));
 
-    if (!values[4] || !values[5])
+    if (!values[5] || !values[6])
     {
         SLPrintString("Error: Could not allocate memory.\n");
         SLBootConsoleReadKey(true);
@@ -238,14 +240,15 @@ OSNoReturn void SLRunKernelLoader(OSAddress base, SLFileLocator locator)
         SLLeave(kSLStatusLoadError);
     }
 
-    CLMemoryCopy(&gSLMainPoolInfo, values[4], sizeof(SLMemoryPool));
-    CLMemoryCopy(&gSLCurrentHeap, values[5], sizeof(SLHeap));
+    CLMemoryCopy(&gSLMainPoolInfo, values[5], sizeof(SLMemoryPool));
+    CLMemoryCopy(&gSLCurrentHeap, values[6], sizeof(SLHeap));
 
     const OSSize sizes[kSLSymbolCount] = {
         sizeof(OSAddress),
         sizeof(OSAddress),
         sizeof(OSAddress),
         sizeof(OSAddress),
+        sizeof(OSSize),
         sizeof(SLMemoryPool),
         sizeof(SLHeap)
     };
@@ -339,7 +342,7 @@ void SLLoadSystemOrLeave(SLBlockIO *blockDevice)
         SLDebugPrint("Kernel Loader %zu from start of BootX at %p\n", kernelLoader.offset, ((OSAddress)bootX) + kernelLoader.offset);
 
         SLPrintString("Running Kernel Loader...\n");
-        SLRunKernelLoader(bootX, kernelLoader);
+        SLRunKernelLoader(bootX, bootLocator.size, kernelLoader);
     } else {
         SLPrintString("Could not locate BootX.\n");
         SLBootConsoleReadKey(true);

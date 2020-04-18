@@ -99,10 +99,10 @@ void SLSetupVideo(void)
     SLGraphicsOutput **screens = SLGraphicsOutputGetAll(kOSNullPointer);
 
     if (!screens) {
-        SLPrintString("No output screens found!\n");
+        SLDebugPrint("No output screens found!\n");
         return;
     } else {
-        SLPrintString("We have screens at %p\n", screens);
+        SLDebugPrint("We have screens at %p\n", screens);
     }
 
     SLGraphicsOutput *screen = *screens;

@@ -8,6 +8,7 @@ __attribute__((section("__DATA,__data"))) OSAddress gSLLoaderSystemTable;
 __attribute__((section("__DATA,__data"))) OSAddress gSLLoaderImageHandle;
 __attribute__((section("__DATA,__data"))) XKBootConfig *gXKBootConfig;
 __attribute__((section("__DATA,__data"))) OSAddress gSLBootXAddress;
+__attribute__((section("__DATA,__data"))) OSSize gSLBootXSize;
 
 // Boot Services MUST be enabled when this binary is called.
 bool gSLBootServicesEnabled = true;

@@ -9,37 +9,19 @@
 
 #include <Corona-X.h>
 #include <SystemLoader/SLBase.h>
+#include <SystemLoader/Kernel/SLKernelLoader.h>
 #include <SystemLoader/EFI/SLBootServices.h>
+#include <SystemLoader/SLMach-O.h>
 
 #if !kCXAssemblyCode && kCXBootloaderCode
 
-typedef struct {
-    struct __SLMemoryZone {
-        OSAddress physical;
-        OSAddress virtual;
-        OSAddress end;
-        OSSize length;
+OSPrivate SLMemoryZoneInfo *SLProcessMemoryMap(SLMemoryMap *map);
+OSPrivate bool SLDoEarlyMemoryInit(SLMemoryMap *map);
 
-        bool isAvailable;
-        bool isCorrupt;
-    } *zones;
-
-    SLMemoryMap *bootloaderMap;
-    OSCount zoneCount;
-
-    OSSize availableSize;
-    OSSize corruptSize;
-
-    OSSize fullSize;
-} SLMemoryZoneInfo;
-
-typedef struct __SLMemoryZone SLMemoryZone;
-
-OSPrivate SLMemoryZoneInfo *SLReadMemoryMap(SLMemoryMap *map);
-OSPrivate SLMemoryZoneInfo *SLMemoryZoneRead(SLMemoryMap *map);
-
-OSPrivate void SLDumpMemoryInfo(SLMemoryZoneInfo *info);
-OSPrivate void SLDumpMemoryMap(SLMemoryMap *map);
+#if kCXBuildDev
+    OSPrivate void SLDumpMemoryZoneInfo(SLMemoryZoneInfo *info);
+    OSPrivate void SLDumpMemoryMap(SLMemoryMap *map);
+#endif /* kCXBuildDev */
 
 #endif /* !kCXAssemblyCode && kCXBootloaderCode */
 

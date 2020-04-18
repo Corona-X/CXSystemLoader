@@ -3,7 +3,6 @@
 #if kCXArchIA
 
 .section kXKCodeSectionName
-.align kXKNaturalAlignment
 
 .extern SKSymbol(gSLConsoleIsInitialized)
 .extern SKSymbol(SLPrintBufferFlush)
@@ -58,8 +57,6 @@ XKDeclareFunction(_SLEntry):
     movq %rax, %rcx                                         // Use the return address from the main function as the first argument to SLLeave
     pushq %rax                                              // Push a fake return address. SLLeave will inject firmware return address here on the stack
 
-.align kXKNaturalAlignment
-
 // Arguments:
 //   %rcx: Exit Code
 //
@@ -106,10 +103,26 @@ XKDeclareFunction(SLLeave):
 // This function simply calls through to SLBootServicesAllocateAnyPages.
 // When kernel loader maps the kernel into memory, boot services are not guarenteed to be active.
 // As such, we need to give SLMach-O an implementation-agnostic function to allocate pages.
-XKDeclareFunction(SLAllocateAnyPages):
+XKDeclareFunction(SLAllocatePages):
     leaq XKSymbol(SLBootServicesAllocateAnyPages)(%rip), %rax   // Load the address of the boot services' alloc function
     callq *%rax                                                 // Call through
     ret                                                         // Immidietely return. Pass return value through.
+
+// Arguments:
+//   %rcx: The start of the pages in memory
+//   %rdx: The number of pages to free
+//
+// Return Value:
+//   None
+//
+// Destroyed Registers:
+//
+// This function simply calls through to SLBootServicesFreePages.
+// When kernel loader maps the kernel into memory, boot services are not guarenteed to be active.
+// As such, we need to give SLMach-O an implementation-agnostic function to allocate pages.
+XKDeclareFunction(SLFreePages):
+    leaq XKSymbol(SLBootServicesFreePages)(%rip), %rax   // Load the address of the boot services' free function
+    jmpq *%rax                                           // Boing boing!
 
 .comm XKSymbol(gSLFirmwareReturnAddress), 8, 8
 .comm XKSymbol(gSLLoaderSystemTable),     8, 8

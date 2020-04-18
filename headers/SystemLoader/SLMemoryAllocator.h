@@ -18,7 +18,7 @@
 
 typedef struct __SLMemoryNode {
     struct __SLMemoryNode *next;
-    UIntN size;
+    UInt64 size;
 } SLMemoryNode;
 
 typedef struct {

@@ -4,22 +4,31 @@
 
 bool SLProcessorValidate(void)
 {
-    // Note: I don't *think* there have been any 64-bit CPUS made that don't support cpuid...
-    // As such, and given that we're already running in long mode, it should be fair to simply
-    // call cpuid directly. If some exception occurs, we certainly don't support the given CPU.
-
+    // Note: We're already running 64-bit here.
+    //   I can't imagine this will fail...
     if (!SLProcessorSupportsCPUID())
     {
-        SLDebugPrint("CPUID Unsupported");
+        SLDebugPrint("Error: CPUID Unsupported.\n");
         return false;
     }
+
+    // Things we need:
+    // --> CPUID
+    // --> NX Bit
+    // --> Long mode, 4 level paging
+    // --> TSC, Invariant TSC, ?Deadline TSC?
+    // --> rdrand CPU random instructions
+
+    // Note: I'm not sure we actually need all of the above things right now.
+    //   We can use other time sources aside from the TSC
+    // A second note is that we should use `rdrand` ONLY to
 
     OSUTF8Char hypervisorName[12];
     OSUTF8Char cpuTypeName[12];
     OSUTF8Char cpuFullName[48];
     UInt32 eax, ebx, ecx, edx;
     UInt32 extendedMax;
-    UInt32 max;
+    //UInt32 max;
 
     cpuid(0);
 
@@ -29,7 +38,7 @@ bool SLProcessorValidate(void)
 
     SLPrintString("CPUID (0): %012s\n", cpuTypeName);
     SLPrintString("Highest Supported: 0x%08X\n", eax);
-    max = eax;
+    //max = eax;
 
     cpuid(0x80000000);
 

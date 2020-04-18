@@ -13,8 +13,19 @@
 
 #if !kCXAssemblyCode && kCXBootloaderCode
 
+#define kSMSignatureEntryPoint  {'_', 'S', 'M', '3', '_'}
+
 typedef struct {
-    //
+    UInt8 anchor_string[5];
+    UInt8 checksum;
+    UInt8 length;
+    UInt8 smbiosMajorVersion;
+    UInt8 smbiosMinorVersion;
+    UInt8 smbiosDocumentRevision;
+    UInt8 entryPointRevision;
+    UInt8 reserved;
+    UInt32 structureTableMaxSize;
+    UInt64 structureTableAddress;
 } SMEntryPoint;
 
 OSPrivate bool SMTableParse(SMEntryPoint *entry);

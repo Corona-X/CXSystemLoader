@@ -31,7 +31,7 @@ typedef struct {
     OSAddress getNextVariableName;
     OSAddress setVariable;
     OSAddress getCounterHigh;
-    SLABI OSNoReturn void (*resetSystem)(SLResetType type, SLStatus status, UIntN dataSize, OSAddress data);
+    SLABI SLStatus (*resetSystem)(SLResetType type, SLStatus status, UIntN dataSize, OSAddress data);
     OSAddress updateCapsule;
     OSAddress queryCapsuleCapabilities;
     OSAddress queryVariableInfo;

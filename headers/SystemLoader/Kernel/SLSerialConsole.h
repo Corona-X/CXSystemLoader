@@ -26,10 +26,15 @@ typedef struct {
 // This is exported so it can be called before the kernel loader's proper main function.
 OSExport void SLConsoleInitialize(void);
 
-// Note: This is blocking.
-OSPrivate void SLPrintCharacter(const OSUTF8Char character);
+#if kCXBuildDev
+    OSPrivate OSUTF8Char SLSerialConsoleReadKey(bool shouldBlock);
 
-OSPrivate OSUTF8Char SLSerialConsoleReadKey(bool shouldBlock);
+    // Note: This is blocking.
+    OSPrivate void SLPrintCharacter(const OSUTF8Char character);
+#else /* !kCXBuildDev */
+    #define SLSerialConsoleReadKey(b)   do {} while (0)
+    #define SLPrintCharacter(c)         do {} while (0)
+#endif /* kCXBuildDev */
 
 OSExport SLSerialConsole gSLSerialConsole;
 

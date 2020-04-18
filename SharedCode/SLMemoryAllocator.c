@@ -361,7 +361,7 @@ void SLMemoryAllocatorDumpHeapInfo(void)
 {
     SLPrintString("Heap Info:\n");
     SLPrintString("Base Address: %p\n", gSLCurrentHeap.baseAddress);
-    SLPrintString("Size: %u/%u ",       gSLCurrentHeap.currentSize, gSLCurrentHeap.maxSize);
+    SLPrintString("Size: %u/%u\n",      gSLCurrentHeap.currentSize, gSLCurrentHeap.maxSize);
     SLPrintString("(0x%zX/0x%zX)\n",    gSLCurrentHeap.currentSize, gSLCurrentHeap.maxSize);
     SLPrintString("Will Free:    %s\n", (gSLCurrentHeap.shouldFree ? "yes" : "no"));
 }

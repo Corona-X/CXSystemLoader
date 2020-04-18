@@ -21,7 +21,7 @@ OSAddress SLSystemTableLocateConfigTable(SLProtocol tableID)
 
 void SLSystemTableDumpConfigTables(SLSystemTable *table)
 {
-    UIntN count = table->numberOfConfigTables;
+    UInt64 count = table->numberOfConfigTables;
 
     if (!count)
     {

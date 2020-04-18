@@ -44,11 +44,12 @@ typedef OSEnum(UInt32) {
 
 typedef struct {
     UInt32              entryType;
+    UInt32              padding0;
     OSAddress           physicalAddress;
     OSAddress           virtualAddress;
     OSCount             pageCount;
     UInt64              attributes;
-    UInt64              padding;
+    UInt64              padding1;
 } SLMemoryDescriptor;
 
 typedef struct {

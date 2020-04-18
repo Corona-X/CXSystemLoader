@@ -1,4 +1,3 @@
-#include <SystemLoader/EFI/SLBootServices.h>
 #include <SystemLoader/SLMemoryAllocator.h>
 #include <SystemLoader/SLLibrary.h>
 #include <SystemLoader/SLBasicIO.h>
@@ -17,7 +16,10 @@ SLMachOFile *SLMachOFileOpenMapped(OSAddress base, OSSize size)
     file->stringsSize = 0;
 
     file->stackAddress = kOSNullPointer;
-    file->stackSize = 0;
+    file->stackSize = kSLMachODefaultStackSize;
+
+    file->minLoadAddress = 0xFFFFFFFFFFFFFFFF;
+    file->maxLoadAddress = kOSNullPointer;
 
     file->loadAddress = kOSNullPointer;
     file->loadedSize = 0;
@@ -101,7 +103,7 @@ SLMachOFile *SLMachOFileOpenMapped(OSAddress base, OSSize size)
             if (cmd->size < sizeof(OSMOLoadCommand))
             {
                 // This will corrupt or cause an infinite loop
-                SLDebugPrint("Mach-O Error: Overlapping load commands.\n");
+                SLDebugPrint("Mach-O Error: Load command of size '%u' too small! (Note: %u commands remaining)\n", cmd->size, commandsLeft);
                 SLFree(file);
 
                 return kOSNullPointer;
@@ -151,14 +153,20 @@ SLMachOFile *SLMachOFileOpenMapped(OSAddress base, OSSize size)
                             return kOSNullPointer;
                         }
 
+                        if (command->virtualAddress < file->minLoadAddress)
+                            file->minLoadAddress = command->virtualAddress;
+
+                        if ((command->virtualAddress + command->virtualSize) > file->maxLoadAddress)
+                            file->maxLoadAddress = command->virtualAddress + command->virtualSize;
+
                         file->loadedSize += command->virtualSize;
                     } else {
                         // Actually map the segment
-                        SLDebugPrint("Mapping Segment %s (size %zu/%zu) %zu from %p\n", command->name, command->size, command->virtualSize, command->virtualAddress, file->loadAddress);
+                        SLDebugPrint("Mapping Segment %s (size %zu/%zu) @ %zu bytes from %p\n", command->name, command->size, command->virtualSize, command->virtualAddress, file->loadAddress);
 
                         OSSize zeroSize = command->virtualSize - command->size;
 
-                        SLDebugPrint("With %zu trailing empty bytes\n", zeroSize);
+                        SLDebugPrint("With %zu trailing bytes\n", zeroSize);
 
                         OSAddress destination = file->loadAddress + command->virtualAddress;
                         OSAddress source = file->base + command->offset;
@@ -208,7 +216,7 @@ SLMachOFile *SLMachOFileOpenMapped(OSAddress base, OSSize size)
                             SLDebugPrint("Mach-O Error: Unixthread load error.\n");
 
                             if (file->loadAddress)
-                                SLBootServicesFreePages(file->loadAddress, file->loadedSize >> kSLBootPageShift);
+                                SLFreePages(file->stackAddress - file->stackSize, (file->loadedSize + file->stackSize) >> kSLBootPageShift);
 
                             SLFree(file);
                             return kOSNullPointer;
@@ -250,7 +258,7 @@ SLMachOFile *SLMachOFileOpenMapped(OSAddress base, OSSize size)
                             SLDebugPrint("Mach-O Error: Symbol/Strings table load error.\n");
 
                             if (file->loadAddress)
-                                SLBootServicesFreePages(file->loadAddress, file->loadedSize >> kSLBootPageShift);
+                                SLFreePages(file->stackAddress - file->stackSize, (file->loadedSize + file->stackSize) >> kSLBootPageShift);
 
                             SLFree(file);
                             return kOSNullPointer;
@@ -270,23 +278,38 @@ SLMachOFile *SLMachOFileOpenMapped(OSAddress base, OSSize size)
         }
 
         if (pass) {
-            // Make sure we loaded everything we needed to
-            if (loadedSize != file->loadedSize)
+            // Make sure we didn't do too much
+            if (loadedSize > file->loadedSize)
             {
-                SLDebugPrint("Mach-O Error: Loaded segment size not equal to predicted.\n");
+                SLDebugPrint("Mach-O Error: Loaded segment size greater than predicted.\n");
 
-                SLBootServicesFreePages(file->loadAddress, file->loadedSize >> kSLBootPageShift);
+                SLFreePages(file->stackAddress - file->stackSize, (file->loadedSize + file->stackSize) >> kSLBootPageShift);
                 SLFree(file);
 
                 return kOSNullPointer;
             }
         } else {
+            if ((file->maxLoadAddress - file->minLoadAddress) > file->loadedSize)
+            {
+                SLDebugPrint("Note: Adjusting load size by %d bytes.\n", (file->maxLoadAddress - file->minLoadAddress) - file->loadedSize);
+
+                file->loadedSize = file->maxLoadAddress - file->minLoadAddress;
+            }
+
+            SLDebugPrint("Allocating %lu + %lu bytes for Mach-O file + stack.\n", file->loadedSize, file->stackSize);
+
             // Allocate space for segments and go back
-            file->loadAddress = SLAllocateAnyPages(file->loadedSize >> kSLBootPageShift);
+            file->loadAddress = SLAllocatePages((file->loadedSize + file->stackSize) >> kSLBootPageShift);
+
+            // Note: We put the stack right before the binary here.
+            //       the stack grows down on x86_64, so if the stack overflows,
+            //       it won't run into the end of the binary itself.
+            file->loadAddress += file->stackSize; // Binary located just past the start of the stack
+            file->stackAddress = file->loadAddress;
 
             if (!file->loadAddress)
             {
-                SLDebugPrint("Mach-O Error: Couldn't allocate space for segments.\n");
+                SLDebugPrint("Mach-O Error: Couldn't allocate space for segments (+stack).\n");
                 SLFree(file);
 
                 return kOSNullPointer;
@@ -294,29 +317,12 @@ SLMachOFile *SLMachOFileOpenMapped(OSAddress base, OSSize size)
         }
     }
 
-    file->stackSize = kSLMachODefaultStackSize;
-    file->stackAddress = SLAllocateAnyPages(file->stackSize >> kSLBootPageShift);
-
-    if (!file->stackAddress)
-    {
-        // Dang, we almost made it...
-        SLDebugPrint("Mach-O Error: Couldn't allocate executable stack.\n");
-
-        SLBootServicesFreePages(file->loadAddress, file->loadedSize >> kSLBootPageShift);
-        SLFree(file);
-
-        return kOSNullPointer;
-    }
-
-    // The stack grows downward on x86_64 :)
-    file->stackAddress += file->stackSize;
     return file;
 }
 
 void SLMachOFileClose(SLMachOFile *file)
 {
-    SLBootServicesFreePages(file->stackAddress - file->stackSize, file->stackSize >> kSLBootPageShift);
-    SLBootServicesFreePages(file->loadAddress, file->loadedSize >> kSLBootPageShift);
+    SLFreePages(file->stackAddress - file->stackSize, (file->loadedSize + file->stackSize) >> kSLBootPageShift);
 
     SLFree(file);
 }
@@ -364,6 +370,39 @@ OSInteger SLMachOSetSymbolValues(SLMachOFile *file, const OSUTF8Char *const *sym
     }
 
     return replaced;
+}
+
+OSAddress SLMachOGetSymbolAddress(SLMachOFile *file, const OSUTF8Char *symbolName)
+{
+    if (!file->symbolTableOffset || !file->symbolCount)
+        return 0;
+
+    if (!file->stringsOffset || !file->stringsSize)
+        return 0;
+
+    OSMOSymbolEntry *symbol = (OSMOSymbolEntry *)(file->base + file->symbolTableOffset);
+    const OSUTF8Char *strings = file->base + file->stringsOffset;
+    OSMOSymbolEntry *symbolTableEnd = symbol + file->symbolCount;
+
+    while (symbol < symbolTableEnd)
+    {
+        if (!(symbol->type & kOSMOSymbolFlagSymbolicDebug))
+        {
+            if (symbol->nameOffset > file->stringsSize)
+                break;
+
+            if (!CLStringCompare8(symbolName, strings + symbol->nameOffset))
+            {
+                SLDebugPrint("Found symbol '%s' at %p\n", strings + symbol->nameOffset, symbol->value);
+
+                return (OSAddress)(symbol->value + file->loadAddress);
+            }
+        }
+
+        symbol++;
+    }
+
+    return kOSNullPointer;
 }
 
 bool SLMachOCallVoidFunction(SLMachOFile *file, const OSUTF8Char *name)
@@ -422,6 +461,6 @@ OSNoReturn void SLMachOExecute(SLMachOFile *file)
                       "D" (file)
                       );
 
-    SLPrintString("Error: ????");
+    SLPrintString("Error: ????\n");
     SLLeave(kSLStatusLoadError);
 }
